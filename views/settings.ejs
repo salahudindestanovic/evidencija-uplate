@@ -1,0 +1,77 @@
+<%- include('partials/head') %>
+<% const nb = settings.non_billable_months.split(',').filter(Boolean).map(Number); %>
+<div class="page-header"><div class="ph-row"><h1>Postavke</h1></div></div>
+
+<% if (error) { %><div class="notice notice-error form-panel"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+
+<div class="panel form-panel">
+  <form method="post" action="/postavke">
+    <div class="form-section">
+      <header><h3>Škola</h3><p>Naziv se prikazuje u meniju i na izvještajima.</p></header>
+      <div class="fields">
+        <div class="full"><label for="school_name">Naziv škole</label><input type="text" id="school_name" name="school_name" value="<%= settings.school_name %>" required></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <header><h3>Članarina</h3><p>Valuta, osnovna cijena za nove grupe i doplata za prevoz.</p></header>
+      <div class="fields">
+        <div><label for="currency">Valuta</label><input type="text" id="currency" name="currency" value="<%= settings.currency %>"></div>
+        <div><label for="default_fee">Osnovna članarina</label><input type="text" id="default_fee" name="default_fee" inputmode="decimal" value="<%= h.amount(Number(settings.default_fee)) %>"></div>
+        <div><label for="transport_fee">Doplata za prevoz (kombi)</label><input type="text" id="transport_fee" name="transport_fee" inputmode="decimal" value="<%= h.amount(Number(settings.transport_fee) || 0) %>">
+          <span class="hint">Dodaje se na osnovnu članarinu djeci koja koriste prevoz (npr. 25 + 25 = 50 €). Nova cijena važi od tekućeg mjeseca za neplaćene mjesece; djeci s upisanim drugačijim iznosom se ne mijenja.</span></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <header><h3>Školska godina</h3><p>Početak godine i mjeseci bez naplate, npr. ljetni raspust.</p></header>
+      <div class="fields">
+        <div><label for="school_year_start">Početak školske godine</label>
+          <select id="school_year_start" name="school_year_start">
+            <% h.MONTH_NAMES.forEach((m, i) => { %><option value="<%= i + 1 %>" <%= Number(settings.school_year_start) === i + 1 ? 'selected' : '' %>><%= m %></option><% }) %>
+          </select></div>
+        <div class="full"><span class="label">Mjeseci bez naplate</span>
+          <div class="month-checks">
+            <% h.MONTH_NAMES.forEach((m, i) => { %>
+              <label><input type="checkbox" name="nb" value="<%= i + 1 %>" <%= nb.includes(i + 1) ? 'checked' : '' %>><%= h.MONTH_SHORT[i] %></label>
+            <% }) %>
+          </div>
+          <span class="hint">Neplaćena zaduženja za označene mjesece se uklanjaju. Evidentirane uplate ostaju.</span></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <header><h3>Dozvole</h3><p>Šta profesori smiju raditi.</p></header>
+      <div><label class="check"><input type="checkbox" name="teachers_can_record" value="1" <%= settings.teachers_can_record === '1' ? 'checked' : '' %>>
+        <span><strong>Profesori mogu evidentirati uplate</strong><span class="hint" style="margin-top:2px">Za učenike iz svojih grupa. Storniranje mogu samo administratori.</span></span></label>
+        <label class="check" style="margin-top:14px"><input type="checkbox" name="teachers_can_edit_students" value="1" <%= settings.teachers_can_edit_students === '1' ? 'checked' : '' %>>
+        <span><strong>Profesori mogu praviti svoje grupe i upisivati, uređivati i brisati učenike</strong><span class="hint" style="margin-top:2px">Samo u svojim grupama. Cijene, prevoz i dug iz ranije i dalje određuje koordinator. Učenik s uplatama se ne briše nego ispisuje.</span></span></label></div>
+    </div>
+    <div class="form-section">
+      <header><h3>Podsjetnici roditeljima</h3><p>Poruka za WhatsApp, Viber i SMS.</p></header>
+      <div class="fields">
+        <div><label for="phone_prefix">Pozivni broj države</label><input type="text" id="phone_prefix" name="phone_prefix" value="<%= settings.phone_prefix %>" inputmode="numeric">
+          <span class="hint">381 za Srbiju. Brojeve iz drugih država upišite s "+" (npr. +382…, +49…).</span></div>
+        <div></div>
+        <div class="full"><label for="reminder_template">Uzorak poruke</label><textarea id="reminder_template" name="reminder_template" rows="3"><%= settings.reminder_template %></textarea>
+          <span class="hint">Zamjenjuje se: {roditelj}, {ucenik}, {mjeseci}, {iznos}, {skola}</span></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <header><h3>Izvještaj za upravu</h3><p>Kako se potpisuje finansijski izvještaj (PDF i Word).</p></header>
+      <div class="fields">
+        <div><label for="report_place">Mjesto izdavanja</label><input type="text" id="report_place" name="report_place" value="<%= settings.report_place %>">
+          <span class="hint">Piše se "U Novom Pazaru: datum".</span></div>
+        <div><label for="report_signer">Izvještaj uradio <span class="opt">(opcionalno)</span></label><input type="text" id="report_signer" name="report_signer" value="<%= settings.report_signer %>" placeholder="npr. sekretar škole: Prof. Džemil ef. Destanović">
+          <span class="hint">Prazno = ime osobe koja pravi izvještaj.</span></div>
+        <div class="full"><label for="report_intro">Uvodni tekst <span class="opt">(opcionalno)</span></label><textarea id="report_intro" name="report_intro" placeholder="Prazno = automatski uvod s brojem učenika i odjeljenja."><%= settings.report_intro %></textarea></div>
+      </div>
+    </div>
+    <% if (settings.demo_accounts && settings.demo_accounts !== '[]') { %>
+    <div class="form-section">
+      <header><h3>Demo</h3><p>Za prezentaciju sistema.</p></header>
+      <div><label class="check"><input type="checkbox" name="demo_mode" value="1" <%= settings.demo_mode === '1' ? 'checked' : '' %>>
+        <span><strong>Prijava jednim klikom na stranici za prijavu</strong><span class="hint" style="margin-top:2px">Bilo ko s adresom može ući kao uprava, koordinator, blagajnik ili profesor bez lozinke. Isključite čim sistem počne da se koristi sa stvarnim podacima.</span></span></label></div>
+    </div>
+    <% } %>
+    <div class="form-foot"><button class="btn btn-primary">Sačuvaj postavke</button></div>
+  </form>
+</div>
+<%- include('partials/foot') %>

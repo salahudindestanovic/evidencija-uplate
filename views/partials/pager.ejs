@@ -1,0 +1,11 @@
+<%# Stranice spiskova. Parametri: pager, query (trenutni filteri) %>
+<% if (pager.pages > 1) { %>
+<div class="pager">
+  <span class="muted"><%= pager.offset + 1 %>–<%= Math.min(pager.offset + pager.perPage, pager.total) %> od <%= pager.total %></span>
+  <span class="pager-links">
+    <% if (pager.page > 1) { %><a class="btn btn-sm" href="<%= h.qs({ ...query, strana: pager.page - 1 }) %>"><%- h.icon('chevron-left', 14) %>Prethodna</a><% } %>
+    <span class="small">Strana <%= pager.page %> / <%= pager.pages %></span>
+    <% if (pager.page < pager.pages) { %><a class="btn btn-sm" href="<%= h.qs({ ...query, strana: pager.page + 1 }) %>">Sljedeća<%- h.icon('chevron-right', 14) %></a><% } %>
+  </span>
+</div>
+<% } %>

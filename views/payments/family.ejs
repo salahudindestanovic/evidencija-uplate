@@ -1,0 +1,66 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; const now = h.currentPeriod(); %>
+<div class="page-header">
+  <div class="crumbs"><a href="/uplate">Uplate</a><%- h.icon('chevron-right', 14) %><span>Uplata za porodicu</span></div>
+  <div class="ph-row"><h1>Uplata za porodicu</h1></div>
+  <p class="ph-meta"><span><%- h.icon('users', 14) %> <%= student.parent_name || 'Roditelj' %><%= student.phone ? ' · ' + student.phone : '' %></span>
+    <span><%= children.length %> <%= h.plural(children.length, 'dijete', 'djece', 'djece') %> · jedna priznanica</span></p>
+</div>
+
+<form method="post" action="/uplate/porodica" data-pay-form>
+  <input type="hidden" name="student_id" value="<%= student.id %>">
+  <% if (back) { %><input type="hidden" name="back" value="<%= back %>"><% } %>
+  <div class="pay-layout">
+    <div>
+      <% for (const c of children) { %>
+        <input type="hidden" name="children" value="<%= c.id %>">
+        <div class="panel family-child">
+          <div class="panel-head">
+            <h2><span class="avatar"><%= h.initials(c.first_name + ' ' + c.last_name) %></span> <%= c.first_name %> <%= c.last_name %></h2>
+            <span class="small muted"><%= c.class_name || 'Bez grupe' %><%= c.debt ? ' · dug ' + h.money(c.debt, cur) : '' %></span>
+          </div>
+          <% if (!c.months.length) { %>
+            <div class="empty">Sve je plaćeno za ovu školsku godinu.</div>
+          <% } else { %>
+          <% if (!c.months.some((m) => m.status !== 'none')) { %><div class="panel-body small t-green" style="padding-top:10px;padding-bottom:10px"><%- h.icon('check', 14) %> Nema dospjelog duga — može se platiti unaprijed.</div><% } %>
+          <div class="table-wrap"><table class="pay-table">
+            <tbody>
+            <% for (const m of c.months) { const advance = m.status === 'none'; const preselect = !m.future && m.period <= now;
+                 const status = advance ? '<span class="st st-advance">Unaprijed</span>' : `<span class="st st-${m.status}">${h.STATUS[m.status].label}</span>`; %>
+              <tr data-pay-row <%= advance ? 'data-advance hidden' : '' %>>
+                <td class="w-1"><input type="checkbox" name="months_<%= c.id %>" value="<%= m.period %>" id="m-<%= c.id %>-<%= m.period %>" <%= preselect ? 'checked' : '' %>></td>
+                <td class="nowrap"><label for="m-<%= c.id %>-<%= m.period %>" style="margin:0;font-weight:500;cursor:pointer"><%= h.monthLabel(m.period) %></label>
+                  <span class="sub"><%- status %><%= m.paid > 0 ? ' · već uplaćeno ' + h.amount(m.paid) : '' %></span></td>
+                <td class="num"><input type="text" name="amount_<%= c.id %>_<%= m.period %>" value="<%= h.amount(m.remaining) %>" inputmode="decimal" aria-label="Iznos"></td>
+              </tr>
+            <% } %>
+            </tbody>
+          </table></div>
+          <% } %>
+        </div>
+      <% } %>
+      <% if (children.some((c) => c.months.some((m) => m.status === 'none'))) { %>
+        <div class="panel-foot" style="border:1px solid var(--border);border-radius:var(--r-lg);margin-top:12px"><button type="button" class="link-btn" data-show-advance><%- h.icon('plus', 14) %> Plati i unaprijed (do kraja školske godine)</button></div>
+      <% } %>
+    </div>
+
+    <div class="panel pay-summary">
+      <div class="panel-head"><h2>Rekapitulacija</h2></div>
+      <div class="panel-body">
+        <div class="pay-fields">
+          <div class="field"><label for="paid_on">Datum uplate</label><input type="date" id="paid_on" name="paid_on" value="<%= today %>" required></div>
+          <div class="field"><label for="method">Način plaćanja</label>
+            <select id="method" name="method"><% for (const [k, v] of Object.entries(h.METHODS)) { %><option value="<%= k %>"><%= v %></option><% } %></select></div>
+        </div>
+        <div class="field" style="margin-top:12px"><label for="note">Napomena <span class="opt">(opcionalno)</span></label><input type="text" id="note" name="note"></div>
+        <div class="total-row hide-sm" style="margin-top:16px"><span class="muted" data-pay-count></span><span><strong data-pay-total>0,00</strong> <span class="muted"><%= cur %></span></span></div>
+      </div>
+      <div class="form-foot hide-sm"><button class="btn btn-primary btn-block" type="submit" data-pay-submit>Evidentiraj porodičnu uplatu</button></div>
+    </div>
+  </div>
+  <div class="pay-bar">
+    <div><span class="muted small" data-pay-count></span><strong><span data-pay-total>0,00</span> <%= cur %></strong></div>
+    <button class="btn btn-primary" type="submit" data-pay-submit>Evidentiraj</button>
+  </div>
+</form>
+<%- include('../partials/foot') %>

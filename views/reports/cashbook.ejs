@@ -1,0 +1,65 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; %>
+<%- include('tabs', { csvUrl: '/izvjestaji/blagajna' + h.qs({ od: from, do: to, format: 'csv' }) }) %>
+
+<form class="no-print" method="get" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+  <input type="date" name="od" value="<%= from %>" aria-label="Od datuma" style="width:auto">
+  <span class="muted">—</span>
+  <input type="date" name="do" value="<%= to %>" aria-label="Do datuma" style="width:auto">
+  <button class="btn">Primijeni</button>
+</form>
+
+<div class="stats <%= byMethod.length >= 3 ? '' : byMethod.length === 2 ? 'stats-3' : 'stats-2' %>">
+  <div class="stat"><div class="stat-label">Ukupno primljeno</div><div class="stat-value"><%= h.amount(total) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot"><%= paymentCount %> <%= h.plural(paymentCount, 'uplata', 'uplate', 'uplata') %></div></div>
+  <% for (const m of byMethod.slice(0, 3)) { %>
+    <div class="stat"><div class="stat-label"><%= m.name %></div><div class="stat-value"><%= h.amount(m.total) %><span class="unit"><%= cur %></span></div><div class="stat-foot"><%= m.n %> <%= h.plural(m.n, 'uplata', 'uplate', 'uplata') %></div></div>
+  <% } %>
+  <% if (!byMethod.length) { %><div class="stat"><div class="stat-label">Broj uplata</div><div class="stat-value">0</div></div><% } %>
+</div>
+
+<% if (byPlace && byPlace.rows.length > 1) { %>
+<div class="panel">
+  <div class="panel-head"><h2><%= byPlace.label %></h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Naziv</th><th class="num">Broj uplata</th><th class="num">Iznos (<%= cur %>)</th></tr></thead>
+    <tbody><% for (const b of byPlace.rows) { %><tr><td class="strong"><%= b.name %></td><td class="num"><%= b.n %></td><td class="num"><%= h.amount(b.total) %></td></tr><% } %></tbody>
+  </table></div>
+</div>
+<% } %>
+
+<% if (byUser.length > 1) { %>
+<div class="panel">
+  <div class="panel-head"><h2>Po osobi koja je evidentirala</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Evidentirao</th><th class="num">Broj uplata</th><th class="num">Iznos (<%= cur %>)</th></tr></thead>
+    <tbody><% for (const u of byUser) { %><tr><td class="strong"><%= u.name %></td><td class="num"><%= u.n %></td><td class="num"><%= h.amount(u.total) %></td></tr><% } %></tbody>
+  </table></div>
+</div>
+<% } %>
+
+<div class="panel">
+  <div class="panel-head"><h2>Uplate <span class="count"><%= paymentCount %></span></h2></div>
+  <% if (!payments.length) { %><div class="empty">Nema uplata u ovom periodu.</div><% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Datum</th><th>Učenik</th><% if (showDept) { %><th>Odjeljenje</th><% } %><th>Grupa</th><th>Za mjesec</th><th>Način</th><th>Evidentirao</th><th class="num">Iznos (<%= cur %>)</th></tr></thead>
+    <tbody>
+    <% for (const p of payments) { %>
+      <tr>
+        <td class="nowrap"><%= h.formatDate(p.paid_on) %></td>
+        <td class="strong"><a href="/ucenici/<%= p.student_id %>"><%= p.last_name %> <%= p.first_name %></a><% if (p.note) { %><span class="sub"><%= p.note %></span><% } %></td>
+        <% if (showDept) { %><td><%= placeOf(p) %></td><% } %>
+        <td><%= p.class_name || '—' %></td>
+        <td><%= h.periodLabel(p.period) %></td>
+        <td><%= h.METHODS[p.method] || p.method %></td>
+        <td class="muted"><%= p.created_by_name %></td>
+        <td class="num"><%= h.amount(p.amount) %></td>
+      </tr>
+    <% } %>
+    </tbody>
+    <tfoot><tr><td colspan="<%= showDept ? 7 : 6 %>">Ukupno</td><td class="num"><%= h.amount(total) %></td></tr></tfoot>
+  </table></div>
+  <% if (paymentCount > payments.length) { %><div class="panel-foot">Prikazano posljednjih <%= payments.length %> od <%= paymentCount %>. Kompletan spisak je u Excel izvozu.</div><% } %>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

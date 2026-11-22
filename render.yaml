@@ -1,0 +1,22 @@
+# Demo verzija na Render.com (besplatni plan).
+# Disk je privremen: pri svakom pokretanju se, ako je baza prazna, ponovo napune demo podaci.
+services:
+  - type: web
+    name: evidencija-naplate-demo
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm ci --omit=dev
+    startCommand: node scripts/demo.js || true; node server.js
+    healthCheckPath: /prijava
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: TZ
+        value: Europe/Belgrade
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: SITE_PASSWORD
+        sync: false

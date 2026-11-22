@@ -1,0 +1,159 @@
+<%- include('../partials/head') %>
+<%
+  const cur = settings.currency;
+  const now = h.currentPeriod();
+  const isAdmin = isManager; const canStorno = isFinance;
+  const prepaid = totals.paid - (totals.due - totals.debt);
+  const ledgerTotals = months.reduce((t, m) => ({ due: t.due + m.due, paid: t.paid + m.paid, open: t.open + (m.charge ? m.remaining : 0) }), { due: 0, paid: 0, open: 0 });
+%>
+<div class="page-header">
+  <div class="crumbs"><a href="/ucenici">Učenici</a><%- h.icon('chevron-right', 14) %><span><%= student.first_name %> <%= student.last_name %></span></div>
+  <div class="ph-row">
+    <h1><%= student.first_name %> <%= student.last_name %></h1>
+    <div class="ph-actions">
+      <% if (canEditStudents) { %><a class="btn" href="/ucenici/<%= student.id %>/uredi"><%- h.icon('pencil') %>Uredi</a><% } %>
+      <% if (totals.debt > 0) { %><a class="btn" href="/ucenici/<%= student.id %>/podsjetnik"><%- h.icon('bell') %>Podsjetnik</a><% } %>
+      <% if (canRecord) { %><a class="btn btn-primary" href="/uplate/nova?ucenik=<%= student.id %>"><%- h.icon('plus') %>Nova uplata</a><% } %>
+    </div>
+  </div>
+  <p class="ph-meta">
+    <span><%- h.icon('map-pin', 14) %> <%= [student.branch_name, student.department_name].filter(Boolean).join(' · ') || '—' %></span>
+    <span><%= student.class_name || 'Bez grupe' %><%= student.program && !h.fold(student.class_name || '').startsWith(h.fold(student.program)) ? ' · ' + student.program : '' %></span>
+    <% if (student.transport) { %><span><%- h.icon('bus', 14) %> Prevoz</span><% } %>
+    <% if (student.left_at && student.left_at < now) { %><span class="tag">Ispisan <%= h.periodLabel(student.left_at) %></span><% } %>
+  </p>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Mjesečna članarina</div><div class="stat-value"><%= h.amount(fee) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot"><%= student.fee_override != null ? 'Posebna cijena (popust)' : 'Standardno' %><%= student.transport ? ' · s prevozom' : '' %></div></div>
+  <div class="stat"><div class="stat-label">Ukupno zaduženo</div><div class="stat-value"><%= h.amount(totals.due) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot">Od <%= h.periodLabel(student.enrolled_from) %></div></div>
+  <div class="stat"><div class="stat-label">Ukupno uplaćeno</div><div class="stat-value"><%= h.amount(totals.paid) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot"><%= prepaid > 0 ? 'Od toga unaprijed ' + h.money(prepaid, cur) : payments.length + ' ' + h.plural(payments.length, 'uplata', 'uplate', 'uplata') %></div></div>
+  <div class="stat"><div class="stat-label">Dug</div><div class="stat-value <%= totals.debt > 0 ? 't-red' : '' %>"><%= h.amount(totals.debt) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot"><%= totals.debt > 0 ? 'Neplaćeni mjeseci' : 'Sve izmireno' %></div></div>
+</div>
+
+<div class="cols cols-wide">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Kartica učenika</h2>
+      <div class="stepper">
+        <a href="?godina=<%= year - 1 %>" aria-label="Prethodna godina"><%- h.icon('chevron-left') %></a>
+        <span><%= h.schoolYearLabel(year, startMonth) %></span>
+        <a href="?godina=<%= year + 1 %>" aria-label="Sljedeća godina"><%- h.icon('chevron-right') %></a>
+      </div>
+    </div>
+    <div class="panel-body" style="border-bottom:1px solid var(--border)">
+      <div class="strip">
+        <% for (const m of months) { %>
+          <div class="<%= m.status %> <%= m.period === now ? 'cur' : '' %>" title="<%= h.periodLabel(m.period) %>: <%= m.status === 'none' ? 'bez zaduženja' : h.STATUS[m.status].label %>"><i></i><%= h.MONTH_SHORT[h.monthOf(m.period) - 1] %></div>
+        <% } %>
+      </div>
+    </div>
+    <% if (olderOpen.length) { %>
+      <div class="panel-body" style="padding-bottom:0">
+        <div class="notice notice-warn" style="margin:0"><%- h.icon('circle-alert') %>
+          <span>Neplaćeno iz ranije: <%= olderOpen.map((c) => h.periodShort(c.period) + ' (' + h.amount(c.remaining) + ')').join(', ') %></span></div>
+      </div>
+    <% } %>
+    <div class="table-wrap" style="<%= olderOpen.length ? 'margin-top:16px;border-top:1px solid var(--border)' : '' %>"><table>
+      <thead><tr><th>Mjesec</th><th>Status</th><th class="num hide-sm">Zaduženo</th><th class="num hide-sm">Uplaćeno</th><th class="num">Otvoreno</th><% if (isAdmin) { %><th class="w-1"></th><% } %></tr></thead>
+      <tbody>
+      <% for (const m of months) { %>
+        <tr>
+          <td class="nowrap <%= m.period === now ? 'strong' : '' %>"><span class="hide-sm"><%= h.MONTH_NAMES[h.monthOf(m.period) - 1] %> <%= m.period.slice(0, 4) %></span><span class="show-sm-inline"><%= h.periodShort(m.period) %></span></td>
+          <td>
+            <% if (m.status === 'none') { %>
+              <span class="st st-none"><%= !m.billable ? 'Ne naplaćuje se' : m.future ? 'Nije dospjelo' : 'Bez zaduženja' %></span>
+            <% } else { %>
+              <span class="st st-<%= m.status %>"><%= h.STATUS[m.status].label %></span>
+            <% } %>
+          </td>
+          <td class="num hide-sm"><%= m.charge ? h.amount(m.charge.waived ? 0 : m.charge.amount) : '—' %></td>
+          <td class="num hide-sm"><%= m.paid ? h.amount(m.paid) : '—' %></td>
+          <td class="num <%= m.charge && m.remaining > 0 ? 't-red' : 'muted' %>"><%= m.charge && m.remaining > 0 ? h.amount(m.remaining) : '—' %></td>
+          <% if (isAdmin) { %>
+          <td class="w-1">
+            <% if (m.charge) { %>
+              <button type="button" class="icon-btn" aria-label="Izmijeni zaduženje" data-charge-edit
+                data-period="<%= m.period %>" data-label="<%= h.periodLabel(m.period) %>"
+                data-amount="<%= h.amount(m.charge.amount) %>" data-waived="<%= m.charge.waived ? 1 : 0 %>"><%- h.icon('pencil', 15) %></button>
+            <% } %>
+          </td>
+          <% } %>
+        </tr>
+      <% } %>
+      </tbody>
+      <tfoot><tr><td colspan="2">Ukupno <%= h.schoolYearLabel(year, startMonth) %></td><td class="num hide-sm"><%= h.amount(ledgerTotals.due) %></td><td class="num hide-sm"><%= h.amount(ledgerTotals.paid) %></td><td class="num"><%= h.amount(ledgerTotals.open) %></td><% if (isAdmin) { %><td></td><% } %></tr></tfoot>
+    </table></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Podaci</h2></div>
+    <div class="panel-body" style="padding-top:4px;padding-bottom:4px">
+      <dl class="dl">
+        <dt>Roditelj</dt><dd><%= student.parent_name || '—' %></dd>
+        <dt>Telefon</dt><dd><% if (student.phone) { %><a href="tel:<%= student.phone %>"><%= student.phone %></a><% } else { %>—<% } %></dd>
+        <dt>Grad</dt><dd><%= student.branch_name || '—' %></dd>
+        <dt>Odjeljenje</dt><dd><%= student.department_name || '—' %></dd>
+        <dt>Grupa</dt><dd><%= student.class_name || '—' %></dd>
+        <dt>Naplata od</dt><dd><%= h.periodLabel(student.enrolled_from) %></dd>
+        <dt>Naplata do</dt><dd><%= student.left_at ? h.periodLabel(student.left_at) : 'Aktivan' %></dd>
+        <% if (student.note) { %><dt>Napomena</dt><dd style="white-space:pre-line;font-weight:400"><%= student.note %></dd><% } %>
+      </dl>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Uplate <span class="count"><%= payments.length %></span></h2></div>
+  <% if (!payments.length) { %>
+    <div class="empty">Nema evidentiranih uplata.</div>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Datum</th><th>Za mjesec</th><th class="hide-sm">Priznanica</th><th class="hide-sm">Način</th><th class="hide-sm">Evidentirao</th><th class="hide-sm">Napomena</th><th class="num">Iznos (<%= cur %>)</th><% if (canStorno) { %><th class="w-1"></th><% } %></tr></thead>
+    <tbody>
+    <% for (const p of payments) { %>
+      <tr>
+        <td class="nowrap"><%= h.formatDate(p.paid_on) %></td>
+        <td><%= h.periodLabel(p.period) %></td>
+        <td class="hide-sm nowrap"><% if (p.receipt_id) { %><a href="/priznanice/<%= p.receipt_id %>"><%- h.icon('receipt', 14) %> <%= p.receipt_number %></a><% } else { %><span class="muted">—</span><% } %></td>
+        <td class="hide-sm"><%= h.METHODS[p.method] || p.method %></td>
+        <td class="muted hide-sm"><%= p.created_by_name || '' %></td>
+        <td class="muted hide-sm"><%= p.note %></td>
+        <td class="num"><%= h.amount(p.amount) %></td>
+        <% if (canStorno) { %>
+        <td class="w-1">
+          <form method="post" action="/uplate/<%= p.id %>/obrisi" data-reason data-confirm="Stornirati uplatu od <%= h.money(p.amount, cur) %> za <%= h.periodLabel(p.period) %>?">
+            <input type="hidden" name="back" value="/ucenici/<%= student.id %>">
+            <input type="hidden" name="reason"><button class="link-btn danger">Storniraj</button>
+          </form>
+        </td>
+        <% } %>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<% if (isAdmin) { %>
+<dialog class="dialog" id="charge-dialog">
+  <form method="post" action="/ucenici/<%= student.id %>/zaduzenje">
+    <div class="panel-head"><h2>Zaduženje — <span data-f="label"></span></h2>
+      <button type="button" class="icon-btn" data-dialog-close aria-label="Zatvori"><%- h.icon('x') %></button></div>
+    <div class="panel-body">
+      <input type="hidden" name="period" data-f="period"><input type="hidden" name="godina" value="<%= year %>">
+      <label for="charge-amount">Iznos (<%= cur %>)</label>
+      <input type="text" id="charge-amount" name="amount" inputmode="decimal" data-f="amount">
+      <span class="hint">Promjena važi samo za ovaj mjesec.</span>
+      <label class="check" style="margin-top:16px"><input type="checkbox" name="waive" value="1" data-f="waived">
+        <span><strong>Oslobodi plaćanja</strong><span class="hint" style="margin-top:2px">Mjesec se ne računa u dug.</span></span></label>
+    </div>
+    <div class="form-foot"><button type="button" class="btn" data-dialog-close>Odustani</button><button class="btn btn-primary" name="action" value="save">Sačuvaj</button></div>
+  </form>
+</dialog>
+<% } %>
+<%- include('../partials/foot') %>

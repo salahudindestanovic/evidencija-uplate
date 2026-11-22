@@ -1,0 +1,84 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; const now = h.currentPeriod(); %>
+<div class="page-header">
+  <div class="crumbs"><a href="/uplate">Uplate</a><%- h.icon('chevron-right', 14) %><a href="/uplate/nova">Nova uplata</a><%- h.icon('chevron-right', 14) %><span><%= student.first_name %> <%= student.last_name %></span></div>
+  <div class="ph-row">
+    <h1>Nova uplata</h1>
+    <div class="ph-actions hide-sm"><a class="btn" href="/ucenici/<%= student.id %>"><%- h.icon('user-round') %>Kartica učenika</a></div>
+  </div>
+  <p class="ph-meta show-sm-flex"><span><strong style="color:var(--text)"><%= student.first_name %> <%= student.last_name %></strong> · <%= student.class_name || 'Bez grupe' %></span>
+    <% if (totals.debt > 0) { %><span class="t-red">dug <%= h.money(totals.debt, cur) %></span><% } %></p>
+</div>
+
+<% if (siblings.length) { %>
+<div class="notice notice-info sibling-hint">
+  <span><%- h.icon('users') %> <strong>Braća/sestre:</strong> <%= siblings.map((s) => s.first_name + ' (dug ' + h.money(s.debt, settings.currency) + ')').join(', ') %> — isti roditelj.</span>
+  <a class="btn btn-sm" href="/uplate/porodica<%= h.qs({ ucenik: student.id, nazad: back || null }) %>"><%- h.icon('users', 14) %>Plati za sve zajedno</a>
+</div>
+<% } %>
+
+<form method="post" action="/uplate" data-pay-form>
+  <input type="hidden" name="student_id" value="<%= student.id %>">
+  <% if (back) { %><input type="hidden" name="back" value="<%= back %>"><% } %>
+  <div class="pay-layout">
+    <div class="panel">
+      <div class="panel-head"><h2>Mjeseci</h2><span class="small muted">Označite mjesece koji se plaćaju</span></div>
+      <% if (!months.length) { %>
+        <div class="empty"><strong>Nema otvorenih mjeseci</strong>Članarina je plaćena za cijelu školsku godinu.</div>
+      <% } else { %>
+      <div class="table-wrap"><table class="pay-table">
+        <thead><tr><th class="w-1"></th><th>Mjesec</th><th class="hide-sm">Status</th><th class="num hide-sm">Zaduženo</th><th class="num">Iznos (<%= cur %>)</th></tr></thead>
+        <tbody>
+        <% const advanceCount = months.filter((m) => m.status === 'none').length; %>
+        <% for (const m of months) { const preselect = !m.future && m.period <= now; const advance = m.status === 'none';
+             const status = advance ? '<span class="st st-advance">Unaprijed</span>' : `<span class="st st-${m.status}">${h.STATUS[m.status].label}</span>`; %>
+          <tr data-pay-row <%= advance ? 'data-advance hidden' : '' %>>
+            <td class="w-1"><input type="checkbox" name="months" value="<%= m.period %>" id="m-<%= m.period %>" <%= preselect ? 'checked' : '' %>></td>
+            <td class="nowrap"><label for="m-<%= m.period %>" style="margin:0;font-weight:500;cursor:pointer"><%= h.monthLabel(m.period) %></label>
+              <span class="sub show-sm"><%- status %></span>
+              <% if (m.paid > 0) { %><span class="sub">Već uplaćeno <%= h.amount(m.paid) %></span><% } %></td>
+            <td class="hide-sm"><%- status %></td>
+            <td class="num muted hide-sm"><%= h.amount(m.expected) %></td>
+            <td class="num"><input type="text" name="amount_<%= m.period %>" value="<%= h.amount(m.remaining) %>" inputmode="decimal" aria-label="Iznos za <%= h.periodLabel(m.period) %>"></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table></div>
+      <% if (advanceCount) { %>
+        <div class="panel-foot"><button type="button" class="link-btn" data-show-advance><%- h.icon('plus', 14) %> Plati unaprijed (<%= advanceCount %> <%= h.plural(advanceCount, 'mjesec', 'mjeseca', 'mjeseci') %> do kraja školske godine)</button></div>
+      <% } %>
+      <% } %>
+    </div>
+
+    <div class="panel pay-summary">
+      <div class="panel-head"><h2>Rekapitulacija</h2></div>
+      <div class="panel-body">
+        <div class="hide-sm" style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <span class="avatar"><%= h.initials(student.first_name + ' ' + student.last_name) %></span>
+          <div><div style="font-weight:500"><%= student.first_name %> <%= student.last_name %></div>
+            <div class="small muted"><%= student.class_name || 'Bez grupe' %> · dug <%= h.money(totals.debt, cur) %></div></div>
+        </div>
+        <div class="pay-fields">
+        <div class="field"><label for="paid_on">Datum uplate</label><input type="date" id="paid_on" name="paid_on" value="<%= today %>" required></div>
+        <div class="field"><label for="method">Način plaćanja</label>
+          <select id="method" name="method"><% for (const [k, v] of Object.entries(h.METHODS)) { %><option value="<%= k %>"><%= v %></option><% } %></select></div>
+        </div>
+        <div class="field" style="margin-top:12px"><label for="note">Napomena <span class="opt">(opcionalno)</span></label><input type="text" id="note" name="note" placeholder="Npr. broj priznanice"></div>
+        <div class="total-row hide-sm" style="margin-top:16px">
+          <span class="muted" data-pay-count></span>
+          <span><strong data-pay-total>0,00</strong> <span class="muted"><%= cur %></span></span>
+        </div>
+      </div>
+      <div class="form-foot hide-sm" style="justify-content:stretch">
+        <button class="btn btn-primary btn-block" type="submit" data-pay-submit <%= months.length ? '' : 'disabled' %>>Evidentiraj uplatu</button>
+      </div>
+    </div>
+  </div>
+
+  <%# Na telefonu: ukupno i potvrda uvijek pri ruci, iznad donjeg menija %>
+  <div class="pay-bar">
+    <div><span class="muted small" data-pay-count></span><strong><span data-pay-total>0,00</span> <%= cur %></strong></div>
+    <button class="btn btn-primary" type="submit" data-pay-submit>Evidentiraj</button>
+  </div>
+</form>
+<%- include('../partials/foot') %>

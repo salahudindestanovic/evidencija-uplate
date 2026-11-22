@@ -1,0 +1,74 @@
+<%- include('../partials/head') %>
+<% const isNew = !cls.id; const defaults = ['Sufara', 'Tedžvid', 'Kur\'an', 'Hifz', 'Ilmihal']; const teacher = !isManager; %>
+<div class="page-header">
+  <div class="crumbs"><a href="/grupe">Grupe</a><%- h.icon('chevron-right', 14) %><span><%= isNew ? 'Nova grupa' : cls.name %></span></div>
+  <div class="ph-row"><h1><%= title %></h1></div>
+</div>
+
+<% if (error) { %><div class="notice notice-error form-panel"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+
+<div class="panel form-panel">
+  <form method="post" action="<%= isNew ? '/grupe' : '/grupe/' + cls.id %>">
+    <div class="form-section">
+      <header><h3>Osnovno</h3><p>Naziv i program koji grupa uči.</p></header>
+      <div class="fields">
+        <div class="full"><label for="name">Naziv grupe</label>
+          <input type="text" id="name" name="name" value="<%= cls.name || '' %>" required <%= isNew ? 'autofocus' : '' %>></div>
+        <div><label for="program">Program</label>
+          <input type="text" id="program" name="program" list="programs" value="<%= cls.program || '' %>">
+          <datalist id="programs"><% for (const p of [...new Set([...defaults, ...programs])]) { %><option value="<%= p %>"><% } %></datalist></div>
+        <% if (departmentOptions.length > 1) { %>
+        <div><label for="department_id">Odjeljenje</label>
+          <select id="department_id" name="department_id" required>
+            <option value="">Odaberite odjeljenje</option>
+            <% for (const d of departmentOptions) { %><option value="<%= d.id %>" <%= cls.department_id === d.id ? 'selected' : '' %>><%= showBranch ? d.branch_name + ' · ' : '' %><%= d.name %></option><% } %>
+          </select></div>
+        <% } else if (departmentOptions.length === 1) { %>
+          <input type="hidden" name="department_id" value="<%= departmentOptions[0].id %>">
+        <% } %>
+        <% if (!teacher) { %>
+        <div><label for="teacher_id">Profesor</label>
+          <select id="teacher_id" name="teacher_id">
+            <option value="">Nije dodijeljen</option>
+            <% for (const t of teachers) { %><option value="<%= t.id %>" <%= cls.teacher_id === t.id ? 'selected' : '' %>><%= showBranch ? t.branch_name + ' — ' : '' %><%= t.name %><%= t.role === 'branch_admin' ? ' (koordinator)' : '' %></option><% } %>
+          </select>
+          <span class="hint">Profesor mora biti iz istog grada. Vidi samo učenike svojih grupa.</span></div>
+        <% } %>
+      </div>
+    </div>
+    <% if (teacher) { const fee = cls.monthly_fee != null ? cls.monthly_fee : Number(settings.default_fee) || 0; %>
+    <div class="form-section">
+      <header><h3>Članarina</h3><p>Cijenu određuje koordinator.</p></header>
+      <div class="hint" style="margin:0">Mjesečna članarina: <strong><%= h.money(fee, settings.currency) %></strong><%= Number(settings.transport_fee) ? ', s prevozom ' + h.money(fee + Number(settings.transport_fee), settings.currency) : '' %>.</div>
+    </div>
+    <% } else { %>
+    <div class="form-section">
+      <header><h3>Članarina</h3><p>Mjesečni iznos za svakog učenika u grupi.</p></header>
+      <div class="fields">
+        <div><label for="monthly_fee">Mjesečna članarina (<%= settings.currency %>)</label>
+          <input type="text" id="monthly_fee" name="monthly_fee" inputmode="decimal" value="<%= cls.monthly_fee != null && !Number.isNaN(cls.monthly_fee) ? h.amount(cls.monthly_fee) : '' %>" required>
+          <% if (!isNew) { %><span class="hint">Nova cijena važi od tekućeg mjeseca. Raniji i plaćeni mjeseci se ne mijenjaju.</span><% } %></div>
+      </div>
+    </div>
+    <% } %>
+    <% if (!isNew) { %>
+    <div class="form-section">
+      <header><h3>Status</h3><p>Arhivirana grupa ostaje u izvještajima.</p></header>
+      <div><label class="check"><input type="checkbox" name="active" value="0" <%= cls.active ? '' : 'checked' %>>
+        <span><strong>Arhiviraj grupu</strong><span class="hint" style="margin-top:2px">Grupa se više ne nudi pri upisu novih učenika.</span></span></label></div>
+    </div>
+    <% } %>
+    <div class="form-foot"><a class="btn" href="/grupe">Odustani</a><button class="btn btn-primary">Sačuvaj</button></div>
+  </form>
+</div>
+<% if (!isNew) { %>
+<div class="panel form-panel" style="margin-top:16px">
+  <form method="post" action="/grupe/<%= cls.id %>/obrisi" data-confirm="Obrisati grupu <%= cls.name %>? Ova radnja se ne može poništiti.">
+    <div class="form-section">
+      <header><h3>Brisanje</h3><p>Moguće samo za praznu grupu. Grupa s učenicima se arhivira.</p></header>
+      <div><button class="btn btn-danger" type="submit"><%- h.icon('trash-2') %>Obriši grupu</button></div>
+    </div>
+  </form>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

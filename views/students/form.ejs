@@ -1,0 +1,95 @@
+<%- include('../partials/head') %>
+<% const isNew = !student.id; const teacher = !isManager;
+   const back = isNew ? '/ucenici' + h.qs({ grupa: student.class_id }) : '/ucenici/' + student.id; %>
+<div class="page-header">
+  <div class="crumbs"><a href="/ucenici">Učenici</a><%- h.icon('chevron-right', 14) %><span><%= isNew ? 'Novi učenik' : student.first_name + ' ' + student.last_name %></span></div>
+  <div class="ph-row"><h1><%= title %></h1></div>
+</div>
+
+<% if (error) { %><div class="notice notice-error form-panel"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+<% if (!classes.length) { %><div class="notice notice-warn form-panel"><%- h.icon('circle-alert') %><span><% if (teacher) { %>Nemate dodijeljenih grupa. Obratite se koordinatoru.<% } else { %>Nema aktivnih grupa. <a href="/grupe/nova">Dodajte grupu</a> prije upisa učenika.<% } %></span></div><% } %>
+
+<div class="panel form-panel">
+  <form method="post" action="<%= isNew ? '/ucenici' : '/ucenici/' + student.id %>">
+    <div class="form-section">
+      <header><h3>Lični podaci</h3><p>Ime učenika i kontakt roditelja.</p></header>
+      <div class="fields">
+        <div><label for="first_name">Ime</label><input type="text" id="first_name" name="first_name" value="<%= student.first_name || '' %>" required <%= isNew ? 'autofocus' : '' %>></div>
+        <div><label for="last_name">Prezime</label><input type="text" id="last_name" name="last_name" value="<%= student.last_name || '' %>" required></div>
+        <div><label for="parent_name">Roditelj / staratelj <span class="opt">(opcionalno)</span></label><input type="text" id="parent_name" name="parent_name" value="<%= student.parent_name || '' %>"></div>
+        <div><label for="phone">Telefon <span class="opt">(opcionalno)</span></label><input type="tel" id="phone" name="phone" value="<%= student.phone || '' %>"></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <header><h3><%= teacher ? 'Grupa' : 'Članarina' %></h3><p><%= teacher ? 'Grupa određuje mjesečnu članarinu.' : 'Grupa određuje mjesečnu cijenu, osim ako se upiše posebna.' %></p></header>
+      <div class="fields">
+        <% if (teacher) { %>
+        <% } else if (departmentOptions.length > 1) { %>
+        <div class="full"><label for="department_id">Odjeljenje</label>
+          <select id="department_id" name="department_id">
+            <option value="">Odaberite odjeljenje</option>
+            <% for (const d of departmentOptions) { %><option value="<%= d.id %>" <%= student.department_id === d.id ? 'selected' : '' %>><%= showBranch ? d.branch_name + ' · ' : '' %><%= d.name %></option><% } %>
+          </select>
+          <span class="hint">Ako je odabrana grupa, učenik pripada odjeljenju te grupe.</span></div>
+        <% } else if (departmentOptions.length === 1) { %>
+          <input type="hidden" name="department_id" value="<%= departmentOptions[0].id %>">
+        <% } %>
+        <div class="full"><label for="class_id">Grupa</label>
+          <select id="class_id" name="class_id" <%= teacher ? 'required' : '' %>>
+            <% if (!teacher) { %><option value="">Bez grupe</option><% } %>
+            <% for (const c of classes) { %>
+              <option value="<%= c.id %>" <%= student.class_id === c.id ? 'selected' : '' %>><%= showDept ? placeOf(c) + ' — ' : '' %><%= c.name %><%= c.program ? ' — ' + c.program : '' %> (<%= h.money(c.monthly_fee, settings.currency) %>)</option>
+            <% } %>
+          </select></div>
+        <% if (teacher) { %>
+          <% if (student.transport) { %><div class="full hint" style="margin:0">Koristi prevoz (kombi) — mijenja koordinator.</div><% } %>
+          <% if (student.fee_override != null) { %><div class="full hint" style="margin:0">Mjesečno plaća: <strong><%= h.money(student.fee_override, settings.currency) %></strong> — mijenja koordinator.</div><% } %>
+        <% } else { %>
+        <div class="full"><label class="check"><input type="checkbox" name="transport" value="1" <%= student.transport ? 'checked' : '' %>>
+          <span><strong>Koristi prevoz (kombi)</strong><span class="hint" style="margin-top:2px">Standardno: <%= h.money(Number(settings.default_fee) || 0, settings.currency) %> bez prevoza, <%= h.money((Number(settings.default_fee) || 0) + (Number(settings.transport_fee) || 0), settings.currency) %> s prevozom (ili cijena grupe + prevoz).</span></span></label></div>
+        <div><label for="fee_override">Mjesečno plaća <span class="opt">(ako je drugačije)</span></label>
+          <input type="text" id="fee_override" name="fee_override" inputmode="decimal" placeholder="standardno" value="<%= student.fee_override != null && !Number.isNaN(student.fee_override) ? h.amount(student.fee_override) : '' %>">
+          <span class="hint">Samo ako dijete plaća drugačije od standardnog: ukupan mjesečni iznos, s prevozom ako ga koristi. Prazno = standardno.</span></div>
+        <div><label for="opening_debt">Dug iz ranije <span class="opt">(opcionalno)</span></label>
+          <input type="text" id="opening_debt" name="opening_debt" inputmode="decimal" placeholder="0,00" value="<%= student.opening_debt ? h.amount(student.opening_debt) : '' %>">
+          <span class="hint">Neplaćeno prije uvođenja sistema (iz sveske). Plaća se kao i ostali mjeseci.</span></div>
+        <% } %>
+        <div><label for="enrolled_from">Naplata od</label>
+          <% if (teacher && !isNew) { %>
+            <input type="text" value="<%= h.periodLabel(student.enrolled_from) %>" disabled>
+            <span class="hint">Mijenja koordinator.</span>
+          <% } else { %>
+            <input type="month" id="enrolled_from" name="enrolled_from" value="<%= student.enrolled_from || '' %>" required>
+            <% if (teacher) { %><span class="hint">Mjesec od kojeg dijete dolazi.</span><% } %>
+          <% } %></div>
+        <div><label for="left_at">Naplata do <span class="opt">(ispis)</span></label>
+          <input type="month" id="left_at" name="left_at" value="<%= student.left_at || '' %>">
+          <span class="hint">Zadnji mjesec koji se naplaćuje.</span></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <header><h3>Napomena</h3><p>Interna bilješka, vidljiva samo osoblju.</p></header>
+      <div><textarea id="note" name="note" aria-label="Napomena"><%= student.note || '' %></textarea></div>
+    </div>
+
+    <div class="form-foot">
+      <a class="btn" href="<%= back %>">Odustani</a>
+      <% if (isNew) { %><button class="btn" type="submit" name="again" value="1">Sačuvaj i dodaj novog</button><% } %>
+      <button class="btn btn-primary" type="submit">Sačuvaj</button>
+    </div>
+  </form>
+</div>
+
+<% if (!isNew) { %>
+<div class="panel form-panel" style="margin-top:16px">
+  <form method="post" action="/ucenici/<%= student.id %>/obrisi" data-confirm="Obrisati učenika? Ova radnja se ne može poništiti.">
+    <div class="form-section">
+      <header><h3>Brisanje</h3><p>Moguće samo ako učenik nema uplata. Za učenike koji su otišli unesite mjesec ispisa.</p></header>
+      <div><button class="btn btn-danger" type="submit"><%- h.icon('trash-2') %>Obriši učenika</button></div>
+    </div>
+  </form>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

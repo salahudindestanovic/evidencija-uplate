@@ -1,0 +1,95 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency;
+   const group = grupa ? classes.find((c) => c.id === grupa) : null;
+   // Do 8 grupa (tipično profesor ili jedno odjeljenje): brzi izbor dugmadima umjesto padajuće liste.
+   const chips = classes.length <= 8;
+   const QUICK = { aktivni: 'Svi', neplaceno: 'Nisu platili', duguju: 'Duguju' }; %>
+<div class="page-header">
+  <div class="ph-row">
+    <h1><%= group ? group.name : 'Učenici' %></h1>
+    <div class="ph-actions">
+      <% if (group && canRecordHere) { %><a class="btn btn-primary" href="/uplate/grupa/<%= group.id %>"><%- h.icon('list-checks') %>Brza naplata</a><% } %>
+      <% if (group && isManager) { %><a class="btn" href="/grupe/<%= group.id %>/cijene"><%- h.icon('badge-euro') %>Cijene i dugovi</a><% } %>
+      <% if (isManager && !grupa) { %><a class="btn hide-sm" href="/ucenici/uvoz"><%- h.icon('file-spreadsheet') %>Uvoz iz Excela</a><% } %>
+      <% if (canEditStudents) { %><a class="btn" href="/ucenici/novi<%= h.qs({ grupa }) %>"><%- h.icon('user-plus') %>Upiši učenika</a><% } %>
+    </div>
+  </div>
+  <% if (group) { %><p class="ph-meta"><%= [showDept ? placeOf(group) : null, group.program && !h.fold(group.name).startsWith(h.fold(group.program)) ? group.program : null,
+       `${pager.total} ${h.plural(pager.total, 'učenik', 'učenika', 'učenika')}`, `${h.money(group.monthly_fee, cur)} mjesečno`].filter(Boolean).join(' · ') %></p><% } %>
+</div>
+
+<% if (chips && classes.length > 1) { %>
+<div class="chips" role="navigation" aria-label="Grupe">
+  <a class="chip <%= !grupa ? 'active' : '' %>" href="/ucenici<%= h.qs({ filter: filter === 'aktivni' ? null : filter }) %>">Sve grupe</a>
+  <% for (const c of classes) { %>
+    <a class="chip <%= grupa === c.id ? 'active' : '' %>" href="/ucenici<%= h.qs({ grupa: c.id, filter: filter === 'aktivni' ? null : filter }) %>"><%= c.name %></a>
+  <% } %>
+</div>
+<% } %>
+
+<div class="panel">
+  <form class="toolbar" method="get" action="/ucenici">
+    <div class="grow input-icon"><%- h.icon('search') %><input type="search" name="q" value="<%= q %>" placeholder="Pretraga po imenu, roditelju ili telefonu" aria-label="Pretraga"></div>
+    <% if (chips) { %>
+      <% if (grupa) { %><input type="hidden" name="grupa" value="<%= grupa %>"><% } %>
+      <input type="hidden" name="filter" value="<%= filter %>">
+      <div class="segmented" role="group" aria-label="Prikaz">
+        <% for (const [key, label] of Object.entries(QUICK)) { %>
+          <a class="<%= filter === key ? 'active' : '' %>" href="/ucenici<%= h.qs({ grupa, filter: key === 'aktivni' ? null : key }) %>"><%= label %></a>
+        <% } %>
+      </div>
+    <% } else { %>
+      <select name="grupa" onchange="this.form.submit()" aria-label="Grupa">
+        <option value="">Sve grupe</option>
+        <% for (const c of classes) { %><option value="<%= c.id %>" <%= grupa === c.id ? 'selected' : '' %>><%= showDept ? placeOf(c) + ' — ' : '' %><%= c.name %></option><% } %>
+      </select>
+      <select name="filter" onchange="this.form.submit()" aria-label="Prikaz">
+        <% for (const [key, label] of Object.entries(FILTERS)) { %><option value="<%= key %>" <%= filter === key ? 'selected' : '' %>><%= label %></option><% } %>
+      </select>
+    <% } %>
+  </form>
+  <% if (!pager.total) { %>
+    <div class="empty"><strong>Nema rezultata</strong>Nijedan učenik ne odgovara odabranim filterima.</div>
+  <% } else { %>
+  <%# Na telefonu: kartice sa statusom, dugom i brzom uplatom. %>
+  <div class="m-list">
+    <% for (const s of students) { %>
+      <div class="m-item">
+        <a class="m-main" href="/ucenici/<%= s.id %>">
+          <span class="m-name"><%= s.last_name %> <%= s.first_name %></span>
+          <span class="m-sub"><%= [grupa ? null : s.class_name, showDept ? placeOf(s) : null].filter(Boolean).join(' · ') || s.parent_name %></span>
+          <span class="m-status"><span class="st st-<%= s.cur_status %>"><%= s.cur_status === 'none' ? 'Bez zaduženja' : h.STATUS[s.cur_status].label %></span>
+            <% if (s.debt > 0) { %><span class="t-red">dug <%= h.money(s.debt, cur) %></span><% } %></span>
+        </a>
+        <% if (canRecord && (s.debt > 0 || s.cur_status === 'unpaid' || s.cur_status === 'partial')) { %>
+          <a class="btn btn-sm btn-primary" href="/uplate/nova<%= h.qs({ ucenik: s.id, nazad: '/ucenici' + h.qs({ grupa, filter: filter === 'aktivni' ? null : filter, q, strana: pager.page > 1 ? pager.page : null }) }) %>"><%- h.icon('plus', 14) %>Uplata</a>
+        <% } else if (s.phone) { %>
+          <a class="icon-btn" href="tel:<%= s.phone %>" aria-label="Pozovi roditelja"><%- h.icon('phone', 17) %></a>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+  <div class="table-wrap hide-sm"><table>
+    <thead><tr>
+      <th>Učenik</th><% if (showDept) { %><th>Odjeljenje</th><% } %><th>Grupa</th><th>Roditelj</th><th>Telefon</th><th><%= h.periodLabel(period).replace(/\.$/, '') %></th><th class="num">Dug (<%= cur %>)</th>
+    </tr></thead>
+    <tbody>
+    <% for (const s of students) { %>
+      <tr class="row-link" data-href="/ucenici/<%= s.id %>">
+        <td class="strong"><a href="/ucenici/<%= s.id %>"><%= s.last_name %> <%= s.first_name %></a>
+          <% if (s.left_at && s.left_at < period) { %> <span class="tag">Ispisan</span><% } %></td>
+        <% if (showDept) { %><td><%= placeOf(s) %></td><% } %>
+        <td><%= s.class_name || '—' %></td>
+        <td><%= s.parent_name || '—' %></td>
+        <td class="nowrap"><% if (s.phone) { %><a href="tel:<%= s.phone %>"><%= s.phone %></a><% } else { %>—<% } %></td>
+        <td><span class="st st-<%= s.cur_status %>"><%= s.cur_status === 'none' ? 'Bez zaduženja' : h.STATUS[s.cur_status].label %></span></td>
+        <td class="num <%= s.debt > 0 ? 't-red' : 'muted' %>"><%= s.debt > 0 ? h.amount(s.debt) : '—' %></td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <%- include('../partials/pager', { pager, query: { q, grupa, filter } }) %>
+  <div class="panel-foot"><%= pager.total.toLocaleString('de-DE') %> <%= h.plural(pager.total, 'učenik', 'učenika', 'učenika') %><% if (totalDebt > 0) { %> · ukupan dug <strong><%= h.money(totalDebt, cur) %></strong><% } %></div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

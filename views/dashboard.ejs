@@ -1,0 +1,144 @@
+<%- include('partials/head') %>
+<% const cur = settings.currency; const breakdownTitle = { branch: 'Naplata po gradovima', department: 'Naplata po odjeljenjima', class: 'Naplata po grupama' }[breakdown.level]; %>
+<div class="page-header">
+  <div class="ph-row">
+    <h1>Pregled</h1>
+    <div class="ph-actions">
+      <a class="btn" href="/ucenici?filter=neplaceno"><%- h.icon('circle-alert') %>Nisu platili</a>
+      <% if (canRecord) { %><a class="btn btn-primary hide-tab" href="/uplate/nova"><%- h.icon('plus') %>Nova uplata</a><% } %>
+    </div>
+  </div>
+  <p class="ph-meta">
+    <span><%- h.icon('calendar', 14) %> <%= h.periodLabel(period).replace(/\.$/, '') %></span>
+    <% if (!scope.teacherId) { %><span><%- h.icon('map-pin', 14) %> <%= placeLabel %></span><% } %>
+  </p>
+</div>
+
+<% if (canRecord && myDay.n) { %>
+<a class="my-day" href="/uplate<%= h.qs({ od: today, do: today, moje: 1 }) %>">
+  <span class="my-day-icon"><%- h.icon('wallet', 20) %></span>
+  <span class="my-day-text"><strong>Danas ste primili <%= h.money(myDay.total, settings.currency) %></strong>
+    <span><%= myDay.n %> <%= h.plural(myDay.n, 'uplata', 'uplate', 'uplata') %> · gotovina <%= h.money(myDay.gotovina, settings.currency) %><%= myDay.total - myDay.gotovina ? ' · banka ' + h.money(myDay.total - myDay.gotovina, settings.currency) : '' %></span></span>
+  <%- h.icon('chevron-right', 18) %>
+</a>
+<% } %>
+
+<% if (classCount === 0) { %>
+  <div class="panel"><div class="empty">
+    <strong>Nema aktivnih grupa</strong>
+    <% if (isManager) { %>
+      Dodajte grupu s mjesečnom članarinom, zatim upišite učenike. Zaduženja se kreiraju automatski.
+      <div><a class="btn btn-primary" href="/grupe/nova"><%- h.icon('plus') %>Nova grupa</a></div>
+    <% } else if (canEditStudents) { %>
+      Napravite svoju grupu, pa upišite djecu. Cijenu određuje koordinator.
+      <div><a class="btn btn-primary" href="/grupe/nova"><%- h.icon('plus') %>Nova grupa</a></div>
+    <% } else { %>
+      Nijedna grupa vam još nije dodijeljena.
+    <% } %>
+  </div></div>
+<% } else { %>
+
+<% if (scope.teacherId && breakdown.rows.length) { %>
+<div class="section-head"><h2 class="section-title" style="margin:0">Moje grupe</h2><% if (canEditStudents) { %><a class="link-btn" href="/grupe/nova"><%- h.icon('plus', 15) %> Nova grupa</a><% } %></div>
+<div class="group-cards">
+  <% for (const r of breakdown.rows) { %>
+    <a class="group-card" href="/ucenici?grupa=<%= r.id %>">
+      <span class="gc-head"><strong><%= r.name %></strong><%- h.icon('chevron-right', 18) %></span>
+      <% const sub = [showDept ? placeOf(r) : null, r.program && !h.fold(r.name).startsWith(h.fold(r.program)) ? r.program : null].filter(Boolean).join(' · '); %>
+      <% if (sub) { %><span class="gc-sub"><%= sub %></span><% } %>
+      <span class="meter"><i style="width: <%= h.pct(r.paid, r.due) %>%"></i></span>
+      <span class="gc-foot">
+        <span>Platilo <strong><%= r.paid_count %> od <%= r.students %></strong></span>
+        <% if (r.unpaid_count) { %><span class="t-red"><%= r.unpaid_count %> <%= h.plural(r.unpaid_count, 'nije platio', 'nije platilo', 'nije platilo') %></span><% } else { %><span class="t-green">Svi platili</span><% } %>
+      </span>
+    </a>
+  <% } %>
+</div>
+<% } %>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-label">Zaduženje za mjesec</div>
+    <div class="stat-value"><%= h.amount(totals.due) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot"><%= totals.students.toLocaleString('de-DE') %> <%= h.plural(totals.students, 'učenik', 'učenika', 'učenika') %></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Naplaćeno za mjesec</div>
+    <div class="stat-value"><%= h.amount(totals.paid) %><span class="unit"><%= cur %></span></div>
+    <div class="meter"><i style="width: <%= h.pct(totals.paid, totals.due) %>%"></i></div>
+    <div class="stat-foot"><%= h.pct(totals.paid, totals.due) %> % · <%= totals.paid_count %> od <%= totals.students %> učenika</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Otvoreno za mjesec</div>
+    <div class="stat-value <%= totals.remaining > 0 ? 't-red' : '' %>"><%= h.amount(totals.remaining) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot"><a href="/ucenici?filter=neplaceno"><%= totals.unpaid_count %> <%= h.plural(totals.unpaid_count, 'učenik nije platio', 'učenika nije platilo', 'učenika nije platilo') %></a></div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Ukupno dugovanje</div>
+    <div class="stat-value"><%= h.amount(totalDebt) %><span class="unit"><%= cur %></span></div>
+    <div class="stat-foot">Svi neplaćeni mjeseci</div>
+  </div>
+</div>
+
+<% if (!(scope.teacherId && breakdown.rows.length)) { %>
+<div class="panel">
+  <div class="panel-head">
+    <h2><%= breakdownTitle %></h2>
+    <% if (isFinance) { %><a class="small" href="/izvjestaji">Izvještaj</a><% } %>
+  </div>
+  <% if (!breakdown.rows.length) { %>
+    <div class="empty">Za ovaj mjesec nema zaduženja.</div>
+  <% } else { %>
+    <%- include('partials/breakdown', { b: breakdown, cur }) %>
+  <% } %>
+</div>
+<% } %>
+
+<div class="cols cols-even" style="margin-top:16px">
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Najveća dugovanja</h2>
+      <a class="small" href="<%= isFinance ? '/izvjestaji/dugovanja' : '/ucenici?filter=duguju' %>">Svi dužnici</a>
+    </div>
+    <% if (!topDebtors.length) { %>
+      <div class="empty">Nema dugovanja.</div>
+    <% } else { %>
+    <div class="table-wrap"><table class="list-table">
+      <tbody>
+      <% for (const d of topDebtors) { %>
+        <tr class="row-link" data-href="/ucenici/<%= d.id %>">
+          <td class="strong"><a href="/ucenici/<%= d.id %>"><%= d.last_name %> <%= d.first_name %></a>
+            <span class="sub"><%= [showDept ? placeOf(d) : null, d.class_name || 'Bez grupe'].filter(Boolean).join(' · ') %> · <%= d.months %> <%= h.plural(d.months, 'mjesec', 'mjeseca', 'mjeseci') %></span></td>
+          <td class="num t-red"><%= h.money(d.debt, cur) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table></div>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Posljednje uplate</h2>
+      <a class="small" href="/uplate">Sve uplate</a>
+    </div>
+    <% if (!recent.length) { %>
+      <div class="empty">Još nema evidentiranih uplata.</div>
+    <% } else { %>
+    <div class="table-wrap"><table class="list-table">
+      <tbody>
+      <% for (const p of recent) { %>
+        <tr class="row-link" data-href="/ucenici/<%= p.student_id %>">
+          <td class="strong"><a href="/ucenici/<%= p.student_id %>"><%= p.last_name %> <%= p.first_name %></a>
+            <span class="sub"><%= h.formatDate(p.paid_on) %> · za <%= h.periodLabel(p.period).replace(/\.$/, '').toLowerCase() %><%= showDept ? ' · ' + placeOf(p) : '' %><%= p.created_by_name && p.created_by !== user.id ? ' · ' + p.created_by_name : '' %></span></td>
+          <td class="num"><%= h.money(p.amount, cur) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table></div>
+    <div class="panel-foot">Primljeno ovaj mjesec: <strong><%= h.money(cashThisMonth.total, cur) %></strong> u <%= cashThisMonth.n %> <%= h.plural(cashThisMonth.n, 'uplati', 'uplate', 'uplata') %></div>
+    <% } %>
+  </div>
+</div>
+<% } %>
+<%- include('partials/foot') %>

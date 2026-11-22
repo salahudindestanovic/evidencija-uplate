@@ -1,0 +1,51 @@
+<%- include('partials/head') %>
+<div class="auth">
+  <div class="auth-box">
+    <div class="auth-brand auth-brand-lg">
+      <div><div class="org"><%= settings.school_name %></div><div class="org-sub">Evidencija naplate</div></div>
+    </div>
+    <% if (demo.length) { %>
+      <div class="panel demo-panel">
+        <div class="panel-body">
+          <h1>Demo pristup</h1>
+          <p class="muted" style="margin-bottom:14px">Izaberite ulogu i pogledajte sistem njenim očima. Učenici i uplate su izmišljeni.</p>
+          <div class="demo-list">
+            <% for (const a of demo) { %>
+              <form method="post" action="/demo-prijava">
+                <input type="hidden" name="username" value="<%= a.username %>">
+                <button class="demo-role">
+                  <span class="avatar"><%= h.initials(a.user.name) %></span>
+                  <span class="demo-text">
+                    <strong><%= a.label %></strong>
+                    <span><%= a.user.name %><%= a.user.branch_name ? ' · ' + [...new Set([a.user.branch_name, a.user.department_name].filter(Boolean))].join(' · ') : '' %></span>
+                    <span class="demo-note"><%= a.note %></span>
+                  </span>
+                  <%- h.icon('chevron-right', 18) %>
+                </button>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      <details class="demo-manual" <%= error ? 'open' : '' %>>
+        <summary>Prijava korisničkim imenom i lozinkom</summary>
+    <% } %>
+    <div class="panel">
+      <div class="panel-body">
+        <h1>Prijava</h1>
+        <p class="muted" style="margin-bottom:20px">Unesite korisničko ime i lozinku.</p>
+        <% if (error) { %><div class="notice notice-error"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+        <form method="post" action="/prijava">
+          <div class="field"><label for="username">Korisničko ime</label>
+            <input type="text" id="username" name="username" value="<%= username %>" autocomplete="username" autocapitalize="none" <%= demo.length ? '' : 'autofocus' %> required></div>
+          <div class="field"><label for="password">Lozinka</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required></div>
+          <div class="field" style="margin-top:20px"><button class="btn btn-primary btn-block">Prijavi se</button></div>
+        </form>
+      </div>
+    </div>
+    <% if (demo.length) { %></details><% } %>
+    <p class="auth-foot">Zaboravljena lozinka? Obratite se administratoru.</p>
+  </div>
+</div>
+<%- include('partials/foot') %>

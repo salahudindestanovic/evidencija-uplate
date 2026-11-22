@@ -1,0 +1,115 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency;
+   const SHOW = 300;
+   const statusLabel = { ok: 'Upisuje se', skip: 'Preskače se', error: 'Greška' }; %>
+<div class="page-header">
+  <div class="crumbs"><a href="/ucenici">Učenici</a><%- h.icon('chevron-right', 14) %><span>Uvoz iz Excela</span></div>
+  <div class="ph-row"><h1>Uvoz učenika iz Excela</h1>
+    <div class="ph-actions"><a class="btn" href="/ucenici/uvoz/primjer.csv"><%- h.icon('download') %>Primjer tabele</a></div>
+  </div>
+  <p class="ph-meta">Spisak koji već imate u Excelu prebacite u sistem odjednom — bez prekucavanja.</p>
+</div>
+
+<% if (error) { %><div class="notice notice-error form-panel"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+
+<form method="post" action="/ucenici/uvoz/pregled" data-import-form>
+  <% if (plan) { %><input type="hidden" name="width" value="<%= plan.map.length %>"><% } %>
+
+  <div class="panel form-panel">
+    <div class="form-section">
+      <header><h3>1. Gdje se upisuju</h3><p>Odjeljenje, mjesec od kojeg se naplaćuje i grupa za redove bez grupe.</p></header>
+      <div class="fields">
+        <% if (form.departments.length > 1) { %>
+          <div class="full"><label for="department_id">Odjeljenje</label>
+            <select id="department_id" name="department_id" required data-import-dep>
+              <option value="">Odaberite odjeljenje</option>
+              <% for (const d of form.departments) { %><option value="<%= d.id %>" <%= form.department_id === d.id ? 'selected' : '' %>><%= showBranch ? d.branch_name + ' · ' : '' %><%= d.name %></option><% } %>
+            </select></div>
+        <% } else if (form.departments.length === 1) { %>
+          <input type="hidden" name="department_id" value="<%= form.departments[0].id %>" data-import-dep>
+          <div class="full"><label>Odjeljenje</label><div class="static-field"><%= form.departments[0].branch_name %> · <%= form.departments[0].name %></div></div>
+        <% } %>
+        <div><label for="enrolled_from">Naplata od</label>
+          <input type="month" id="enrolled_from" name="enrolled_from" value="<%= form.enrolled_from %>" required>
+          <span class="hint">Prvi mjesec članarine za sve uvezene učenike.</span></div>
+        <div><label for="default_class_id">Grupa za redove bez grupe <span class="opt">(opcionalno)</span></label>
+          <select id="default_class_id" name="default_class_id" data-import-classes>
+            <option value="">Bez grupe</option>
+            <% for (const c of classes) { %><option value="<%= c.id %>" data-dep="<%= c.department_id %>" <%= form.default_class_id === c.id ? 'selected' : '' %> <%= c.department_id === form.department_id ? '' : 'hidden' %>><%= c.name %> (<%= h.money(c.monthly_fee, cur) %>)</option><% } %>
+          </select></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <header><h3>2. Spisak učenika</h3><p>U Excelu označite redove (sa zaglavljem), kopirajte <kbd>Ctrl+C</kbd> i zalijepite ovdje <kbd>Ctrl+V</kbd>.</p></header>
+      <div>
+        <% if (plan) { %><details class="import-text"><summary>Zalijepljeni tekst (<%= plan.items.length %> <%= h.plural(plan.items.length, 'red', 'reda', 'redova') %>) — izmijeni</summary><% } %>
+        <textarea name="text" rows="10" class="mono" spellcheck="false" data-import-text placeholder="Ime&#9;Prezime&#9;Roditelj&#9;Telefon&#9;Grupa&#10;Amina&#9;Hodžić&#9;Senad Hodžić&#9;063 123 456&#9;Sufara 1&#10;Harun&#9;Hodžić&#9;Senad Hodžić&#9;063 123 456&#9;Tedžvid"><%= form.text %></textarea>
+        <% if (plan) { %></details><% } %>
+        <div class="import-file">
+          <label class="link-btn"><%- h.icon('file-up', 15) %> ili učitajte CSV datoteku<input type="file" accept=".csv,.txt,text/csv,text/plain" data-import-file hidden></label>
+          <span class="hint">Kolone koje se prepoznaju: Ime, Prezime (ili "Ime i prezime"), Roditelj, Telefon, Grupa, Prevoz (da/ne), Mjesečno (ako ima popust), Dug (iz ranije), Napomena.</span>
+        </div>
+      </div>
+    </div>
+    <% if (!plan) { %>
+      <div class="form-foot"><button class="btn btn-primary"><%- h.icon('eye') %>Pregledaj prije upisa</button></div>
+    <% } %>
+  </div>
+
+  <% if (plan) { const okItems = plan.items.filter((x) => x.status === 'ok'); %>
+  <div class="panel import-preview">
+    <div class="panel-head">
+      <h2>3. Pregled</h2>
+      <span class="small"><strong class="t-green"><%= plan.counts.ok %> za upis</strong><% if (plan.counts.skip) { %> · <span class="muted"><%= plan.counts.skip %> preskočeno</span><% } %></span>
+    </div>
+    <div class="panel-body">
+      <p class="small muted" style="margin-bottom:10px">Provjerite da li su kolone dobro prepoznate. Ako nisu, promijenite i kliknite „Osvježi pregled".</p>
+      <div class="import-map">
+        <% plan.columns.forEach((col, i) => { %>
+          <div class="import-col">
+            <span class="import-col-head" title="<%= col %>"><%= col || 'Kolona ' + (i + 1) %></span>
+            <span class="import-col-sample" title="<%= plan.sample[i] %>"><%= plan.sample[i] || '—' %></span>
+            <select name="map_<%= i %>" aria-label="Kolona <%= col %>">
+              <% for (const [k, v] of Object.entries(FIELDS)) { %><option value="<%= k %>" <%= plan.map[i] === k ? 'selected' : '' %>><%= v %></option><% } %>
+            </select>
+          </div>
+        <% }) %>
+      </div>
+      <div class="import-options">
+        <label class="check"><input type="hidden" name="header" value="0"><input type="checkbox" name="header" value="1" <%= plan.hasHeader ? 'checked' : '' %>><span>Prvi red je zaglavlje (nazivi kolona)</span></label>
+        <button class="btn btn-sm" type="submit" formaction="/ucenici/uvoz/pregled"><%- h.icon('refresh-cw', 14) %>Osvježi pregled</button>
+      </div>
+      <% if (plan.newGroups.length) { %>
+        <div class="notice notice-warn" style="margin:14px 0 0"><%- h.icon('circle-alert') %><span>Ove grupe ne postoje u odjeljenju i biće kreirane s osnovnom cijenom <%= h.money(Number(settings.default_fee) || 0, cur) %>:
+          <strong><%= plan.newGroups.map((g) => `${g.name} (${g.count})`).join(', ') %></strong>. Cijenu i profesora podesite poslije u Grupama.</span></div>
+      <% } %>
+    </div>
+    <div class="table-wrap">
+      <table class="table import-table">
+        <thead><tr><th class="w-1">Red</th><th>Učenik</th><th class="hide-sm">Roditelj</th><th class="hide-sm">Telefon</th><th>Grupa</th><th>Status</th></tr></thead>
+        <tbody>
+          <% for (const x of [...plan.items].sort((a, b) => (a.status === 'ok') - (b.status === 'ok')).slice(0, SHOW)) { %>
+            <tr class="<%= x.status !== 'ok' ? 'row-muted' : '' %>">
+              <td class="muted"><%= x.line %></td>
+              <td><strong><%= x.first_name || '—' %> <%= x.last_name %></strong><% if (x.fee != null && !Number.isNaN(x.fee)) { %><span class="sub">Mjesečno <%= h.money(x.fee, cur) %></span><% } %><% if (x.transport) { %><span class="sub"><%- h.icon('bus', 13) %> Prevoz</span><% } %><% if (x.debt > 0) { %><span class="sub t-red">Dug iz ranije <%= h.money(x.debt, cur) %></span><% } %>
+                <span class="sub show-sm"><%= [x.parent_name, x.phone].filter(Boolean).join(' · ') %></span></td>
+              <td class="hide-sm"><%= x.parent_name || '—' %></td>
+              <td class="hide-sm nowrap"><%= x.phone || '—' %></td>
+              <td><%= x.class ? x.class.name : x.newGroup ? x.newGroup.name : '—' %><% if (x.newGroup) { %> <span class="tag">nova</span><% } %></td>
+              <td><span class="st <%= x.status === 'ok' ? 'st-paid' : x.status === 'skip' ? 'st-none' : 'st-unpaid' %>"><%= statusLabel[x.status] %></span>
+                <% if (x.reason) { %><span class="sub"><%= x.reason %></span><% } %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <% if (plan.items.length > SHOW) { %><div class="panel-foot small muted">Prikazano prvih <%= SHOW %> od <%= plan.items.length %> redova (prvo preskočeni). Upisuju se svi ispravni redovi.</div><% } %>
+    <div class="form-foot import-foot">
+      <span class="small muted">Naplata od <strong><%= h.periodLabel(form.enrolled_from) %></strong></span>
+      <button class="btn btn-primary" type="submit" formaction="/ucenici/uvoz" <%= okItems.length ? '' : 'disabled' %>><%- h.icon('user-plus') %>Upiši <%= okItems.length %> <%= h.plural(okItems.length, 'učenika', 'učenika', 'učenika') %></button>
+    </div>
+  </div>
+  <% } %>
+</form>
+<%- include('../partials/foot') %>

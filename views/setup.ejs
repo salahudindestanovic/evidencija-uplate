@@ -1,0 +1,34 @@
+<%- include('partials/head') %>
+<div class="auth">
+  <div class="auth-box" style="max-width:440px">
+    <div class="auth-brand">
+      <img class="brand-logo" src="/brand/logo-600.png" alt="Logo škole">
+      <div><div class="org">Evidencija naplate</div><div class="org-sub">Početno podešavanje</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-body">
+        <h1>Glavni administrator</h1>
+        <p class="muted" style="margin-bottom:20px">Ovaj račun vidi sve gradove. Administratore gradova i profesore dodajete kasnije.</p>
+        <% if (error) { %><div class="notice notice-error"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+        <form method="post" action="/setup">
+          <div class="field"><label for="school_name">Naziv škole</label>
+            <input type="text" id="school_name" name="school_name" value="<%= form.school_name || settings.school_name %>"></div>
+          <div class="field"><label for="city">Prvi grad</label>
+            <input type="text" id="city" name="city" value="<%= form.city || '' %>" required>
+            <span class="hint">Ostale gradove dodajete kasnije.</span></div>
+          <div class="field"><label for="name">Vaše ime i prezime</label>
+            <input type="text" id="name" name="name" value="<%= form.name || '' %>" required></div>
+          <div class="field"><label for="username">Korisničko ime</label>
+            <input type="text" id="username" name="username" value="<%= form.username || '' %>" autocomplete="username" autocapitalize="none" required></div>
+          <div class="field"><label for="password">Lozinka</label>
+            <input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required>
+            <span class="hint">Najmanje 8 znakova.</span></div>
+          <div class="field"><label for="password2">Potvrda lozinke</label>
+            <input type="password" id="password2" name="password2" autocomplete="new-password" required></div>
+          <div class="field" style="margin-top:20px"><button class="btn btn-primary btn-block">Kreiraj račun</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<%- include('partials/foot') %>

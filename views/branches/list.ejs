@@ -1,0 +1,50 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; const active = cities.filter((c) => c.active); const archived = cities.filter((c) => !c.active); %>
+<div class="page-header">
+  <div class="ph-row">
+    <h1>Gradovi i odjeljenja</h1>
+    <div class="ph-actions"><a class="btn btn-primary" href="/gradovi/novi"><%- h.icon('plus') %>Novi grad</a></div>
+  </div>
+  <p class="ph-meta">Naplata za <%= h.periodLabel(period).replace(/\.$/, '').toLowerCase() %>. Otvorite grad da biste vidjeli i uredili njegova odjeljenja.</p>
+</div>
+
+<div class="panel">
+  <% if (!active.length) { %>
+    <div class="empty"><strong>Nema gradova</strong><div><a class="btn btn-primary" href="/gradovi/novi"><%- h.icon('plus') %>Novi grad</a></div></div>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grad</th><th>Koordinator</th><th class="num">Odjeljenja</th><th class="num">Grupe</th><th class="num">Učenici</th><th class="num">Naplata mjeseca</th><th class="num">Ukupan dug (<%= cur %>)</th></tr></thead>
+    <tbody>
+    <% for (const c of active) { %>
+      <tr class="row-link" data-href="/gradovi/<%= c.id %>">
+        <td class="strong"><a href="/gradovi/<%= c.id %>"><%= c.name %></a></td>
+        <td><% if (c.coordinators) { %><%= c.coordinators %><% } else { %><span class="muted">—</span><% } %></td>
+        <td class="num"><%= c.dept_count %></td>
+        <td class="num"><%= c.class_count %></td>
+        <td class="num"><%= c.student_count.toLocaleString('de-DE') %></td>
+        <td class="num nowrap"><%= h.pct(c.month.paid, c.month.due) %> %<span class="meter meter-inline"><i style="width: <%= h.pct(c.month.paid, c.month.due) %>%"></i></span></td>
+        <td class="num <%= c.total_debt > 0 ? 't-red' : 'muted' %>"><%= h.amount(c.total_debt) %></td>
+      </tr>
+    <% } %>
+    </tbody>
+    <tfoot><tr>
+      <td colspan="2">Ukupno</td>
+      <td class="num"><%= active.reduce((t, c) => t + c.dept_count, 0) %></td>
+      <td class="num"><%= active.reduce((t, c) => t + c.class_count, 0) %></td>
+      <td class="num"><%= active.reduce((t, c) => t + c.student_count, 0).toLocaleString('de-DE') %></td>
+      <td class="num"><%= h.pct(active.reduce((t, c) => t + c.month.paid, 0), active.reduce((t, c) => t + c.month.due, 0)) %> %</td>
+      <td class="num"><%= h.amount(active.reduce((t, c) => t + c.total_debt, 0)) %></td>
+    </tr></tfoot>
+  </table></div>
+  <% } %>
+</div>
+
+<% if (archived.length) { %>
+<div class="panel">
+  <div class="panel-head"><h2>Arhivirani gradovi</h2></div>
+  <div class="table-wrap"><table><tbody>
+    <% for (const c of archived) { %><tr><td class="strong"><%= c.name %></td><td class="w-1"><a class="btn btn-sm" href="/gradovi/<%= c.id %>/uredi">Uredi</a></td></tr><% } %>
+  </tbody></table></div>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

@@ -1,0 +1,34 @@
+<%# Tabela naplate za jedan mjesec po gradovima, odjeljenjima ili grupama. Parametri: b (summary), cur %>
+<% const canSwitch = !!switchable && b.level !== 'class'; %>
+<div class="table-wrap"><table>
+  <thead><tr>
+    <th><%= b.label %></th>
+    <% const showPerson = !(b.level === 'class' && scope.teacherId); %>
+    <% if (showPerson) { %><th class="hide-sm"><%= b.level === 'class' ? 'Profesor' : 'Koordinator' %></th><% } %>
+    <th class="num">Platilo</th><th class="num hide-sm">Zaduženo (<%= cur %>)</th><th class="num hide-sm">Naplaćeno (<%= cur %>)</th><th class="num">Otvoreno (<%= cur %>)</th>
+  </tr></thead>
+  <tbody>
+  <% for (const r of b.rows) { %>
+    <tr <% if (b.level === 'class' && r.id) { %>class="row-link" data-href="/ucenici?grupa=<%= r.id %>"<% } %>>
+      <td class="strong">
+        <% if (canSwitch && r.id) { %>
+          <form method="post" action="/odabir" style="display:inline">
+            <input type="hidden" name="place" value="<%= b.level === 'branch' ? 'b' : 'd' %><%= r.id %>"><input type="hidden" name="back" value="<%= currentPath %>">
+            <button class="link-btn row-title"><%= r.name %></button>
+          </form>
+        <% } else if (b.level === 'class' && r.id) { %>
+          <a href="/ucenici?grupa=<%= r.id %>"><%= r.name %></a>
+        <% } else { %><%= r.name %><% } %>
+        <% if (b.level === 'class') { %><span class="sub"><%= [showDept ? placeOf(r) : null, r.program].filter(Boolean).join(' · ') %></span><% } %>
+        <% if (b.level === 'department' && showBranch) { %><span class="sub"><%= r.branch_name %></span><% } %>
+      </td>
+      <% if (showPerson) { %><td class="muted hide-sm"><%= (b.level === 'class' ? r.teacher_name : r.coordinators) || '—' %></td><% } %>
+      <td class="num nowrap"><%= r.paid_count %> / <%= r.students %><span class="meter meter-inline"><i style="width: <%= h.pct(r.paid, r.due) %>%"></i></span></td>
+      <td class="num hide-sm"><%= h.amount(r.due) %></td>
+      <td class="num hide-sm"><%= h.amount(r.paid) %></td>
+      <td class="num <%= r.remaining > 0 ? 't-red' : 'muted' %>"><%= h.amount(r.remaining) %></td>
+    </tr>
+  <% } %>
+  </tbody>
+  <tfoot><tr><td>Ukupno</td><% if (showPerson) { %><td class="hide-sm"></td><% } %><td class="num"><%= b.totals.paid_count %> / <%= b.totals.students %></td><td class="num hide-sm"><%= h.amount(b.totals.due) %></td><td class="num hide-sm"><%= h.amount(b.totals.paid) %></td><td class="num"><%= h.amount(b.totals.remaining) %></td></tr></tfoot>
+</table></div>

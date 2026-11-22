@@ -1,0 +1,11 @@
+<%- include('partials/head') %>
+<div class="<%= user ? '' : 'auth' %>">
+  <div class="panel" style="max-width:520px;<%= user ? '' : 'width:100%' %>">
+    <div class="empty">
+      <strong><%= title %></strong>
+      <%= message %>
+      <div><a class="btn" href="/"><%- h.icon('arrow-left') %>Nazad na pregled</a></div>
+    </div>
+  </div>
+</div>
+<%- include('partials/foot') %>

@@ -1,0 +1,39 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency;
+   const base = cls.monthly_fee;
+   const tf = Number(settings.transport_fee) || 0;
+   const val = (s, key, fallback) => (form ? (form[`${key}_${s.id}`] ?? '') : fallback); %>
+<div class="page-header">
+  <div class="crumbs"><a href="/ucenici<%= h.qs({ grupa: cls.id }) %>"><%= cls.name %></a><%- h.icon('chevron-right', 14) %><span>Cijene i dugovi</span></div>
+  <div class="ph-row"><h1>Cijene i dugovi</h1></div>
+  <p class="ph-meta">Popunite jednom: ko koristi prevoz, ko plaća drugačiji iznos i ko duguje iz ranije. Poslije se samo evidentiraju uplate, a dug se računa sam.</p>
+</div>
+
+<div class="notice notice-info prices-help"><%- h.icon('info') %><span>Standardno: <strong><%= h.money(base, cur) %></strong> bez prevoza, <strong><%= h.money(base + tf, cur) %></strong> s prevozom. Ako dijete plaća drugačije, upišite ukupan mjesečni iznos; prazno znači standardno.</span></div>
+<% if (Object.keys(errors).length) { %><div class="notice notice-error"><%- h.icon('circle-alert') %><span>Provjerite označene redove — ništa nije sačuvano.</span></div><% } %>
+
+<form method="post" action="/grupe/<%= cls.id %>/cijene" data-prices data-base="<%= base %>" data-transport="<%= tf %>">
+  <div class="panel">
+    <div class="prices-head hide-sm"><span>Učenik</span><span>Prevoz</span><span>Mjesečno plaća</span><span>Dug iz ranije</span></div>
+    <% if (!rows.length) { %><div class="empty"><strong>Nema učenika u grupi</strong></div><% } %>
+    <% for (const s of rows) {
+         const t = form ? !!form[`t_${s.id}`] : !!s.transport;
+         const fee = val(s, 'fee', s.fee_override != null ? h.amount(s.fee_override) : '');
+         const debt = val(s, 'debt', s.debt.amount ? h.amount(s.debt.amount) : ''); %>
+      <div class="prices-row <%= errors[s.id] ? 'has-error' : '' %>" data-row>
+        <div class="prices-name"><strong><%= s.last_name %> <%= s.first_name %></strong><span><%= s.parent_name || '—' %><%= s.debt.paid ? ' · od duga uplaćeno ' + h.money(s.debt.paid, cur) : '' %></span>
+          <% if (errors[s.id]) { %><span class="t-red"><%= errors[s.id] %></span><% } %></div>
+        <label class="check prices-t"><input type="checkbox" name="t_<%= s.id %>" value="1" <%= t ? 'checked' : '' %> data-t><span>Prevoz</span></label>
+        <div class="prices-in"><span class="show-sm-inline small muted">Mjesečno</span>
+          <div class="input-suffix"><input type="text" name="fee_<%= s.id %>" value="<%= fee %>" inputmode="decimal" placeholder="<%= h.amount(base + (t ? tf : 0)) %>" aria-label="Mjesečno plaća — <%= s.first_name %> <%= s.last_name %>" data-fee><span><%= cur %></span></div></div>
+        <div class="prices-in"><span class="show-sm-inline small muted">Dug iz ranije</span>
+          <div class="input-suffix"><input type="text" name="debt_<%= s.id %>" value="<%= debt %>" inputmode="decimal" placeholder="0,00" aria-label="Dug iz ranije — <%= s.first_name %> <%= s.last_name %>"><span><%= cur %></span></div></div>
+      </div>
+    <% } %>
+    <div class="form-foot prices-foot">
+      <a class="btn" href="/ucenici<%= h.qs({ grupa: cls.id }) %>">Odustani</a>
+      <button class="btn btn-primary"><%- h.icon('check') %>Sačuvaj</button>
+    </div>
+  </div>
+</form>
+<%- include('../partials/foot') %>

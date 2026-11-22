@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title><%= title %> — <%= settings.school_name %></title>
+<link rel="preload" href="/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/style.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0f5a44">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Naplata">
+<link rel="apple-touch-icon" href="/icons/icon-180.png">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<% if (user) { %>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sb-head">
+      <img class="brand-logo" src="/brand/logo-600.png" alt="Logo škole">
+      <div><div class="org"><%= settings.school_name %></div><div class="org-sub">Evidencija naplate</div></div>
+    </div>
+    <div class="sb-city">
+      <% if (switchable) { %>
+        <form method="post" action="/odabir">
+          <input type="hidden" name="back" value="<%= currentPath %>">
+          <label for="place-switch" class="sb-label" style="padding:0 0 6px"><%= user.role === 'admin' ? 'Grad / odjeljenje' : user.branch_name %></label>
+          <div class="input-icon"><%- h.icon('map-pin', 15) %>
+            <select id="place-switch" name="place" onchange="this.form.submit()">
+              <% if (user.role === 'admin') { %>
+                <option value="">Svi gradovi</option>
+                <% for (const b of switchable.branches) { %>
+                  <optgroup label="<%= b.name %>">
+                    <option value="b<%= b.id %>" <%= scope.branchId === b.id && !scope.departmentId ? 'selected' : '' %>><%= b.name %> — sva odjeljenja</option>
+                    <% for (const d of switchable.departments.filter((x) => x.branch_id === b.id)) { %>
+                      <option value="d<%= d.id %>" <%= scope.departmentId === d.id ? 'selected' : '' %>><%= d.name %></option>
+                    <% } %>
+                  </optgroup>
+                <% } %>
+              <% } else { %>
+                <option value="">Sva odjeljenja</option>
+                <% for (const d of switchable.departments) { %><option value="d<%= d.id %>" <%= scope.departmentId === d.id ? 'selected' : '' %>><%= d.name %></option><% } %>
+              <% } %>
+            </select>
+          </div>
+          <noscript><button class="btn btn-sm" style="margin-top:6px">Prikaži</button></noscript>
+        </form>
+      <% } else { %>
+        <div class="sb-label" style="padding:0 0 4px"><%= user.role === 'teacher' ? 'Prikaz' : 'Odjeljenje' %></div>
+        <div class="sb-city-name"><%- h.icon('map-pin', 15) %><span><%= placeLabel %></span></div>
+      <% } %>
+    </div>
+    <nav class="sb-nav">
+      <%
+        const navLink = (href, label, icon) => {
+          const active = href === '/' ? currentPath === '/' : currentPath.startsWith(href);
+          return `<a href="${href}" class="sb-link${active ? ' active' : ''}">${h.icon(icon, 17)}<span>${label}</span></a>`;
+        };
+      %>
+      <div class="sb-label">Naplata</div>
+      <%- navLink('/', 'Pregled', 'layout-dashboard') %>
+      <%- navLink('/ucenici', 'Učenici', 'users') %>
+      <%- navLink('/uplate', 'Uplate', 'wallet') %>
+      <%- navLink('/grupe', 'Grupe', 'layers') %>
+      <% if (isFinance) { %>
+        <div class="sb-label">Administracija</div>
+        <%- navLink('/izvjestaji', 'Izvještaji', 'chart-column') %>
+      <% } %>
+      <% if (isManager) { %>
+        <%- navLink('/korisnici', user.role === 'admin' ? 'Korisnici' : 'Osoblje', 'user-cog') %>
+        <% if (user.role === 'admin') { %>
+          <%- navLink('/gradovi', 'Gradovi', 'map-pin') %>
+          <%- navLink('/postavke', 'Postavke', 'settings') %>
+        <% } %>
+      <% } %>
+    </nav>
+    <div class="sb-foot">
+      <div class="avatar"><%= h.initials(user.name) %></div>
+      <div class="sb-user"><a href="/profil"><%= user.name %></a><span><%= ROLES[user.role] %></span></div>
+      <form method="post" action="/odjava"><button class="icon-btn" title="Odjava" aria-label="Odjava"><%- h.icon('log-out', 17) %></button></form>
+    </div>
+  </aside>
+  <div class="scrim" data-nav-close></div>
+  <div>
+    <header class="mobilebar">
+      <img class="brand-logo" src="/brand/logo-600.png" alt="Logo škole">
+      <div class="mb-title">
+        <strong><%= settings.school_name %></strong>
+        <% if (switchable) { %>
+          <button type="button" class="mb-place" data-nav-toggle><%- h.icon('map-pin', 13) %><span><%= placeLabel %></span><%- h.icon('chevron-down', 13) %></button>
+        <% } else { %>
+          <span class="mb-place"><%- h.icon('map-pin', 13) %><span><%= placeLabel %></span></span>
+        <% } %>
+      </div>
+      <a class="avatar" href="/profil" aria-label="Moj profil"><%= h.initials(user.name) %></a>
+    </header>
+    <main class="content">
+    <% if (flash) { %>
+      <div class="notice notice-<%= flash.type %>"><%- h.icon(flash.type === 'ok' ? 'check' : 'circle-alert') %><span><%= flash.msg %><% if (flash.link) { %> <a class="notice-link" href="<%= flash.link.href %>"><%= flash.link.label %> →</a><% } %></span></div>
+    <% } %>
+<% } else { %>
+<main>
+<% } %>

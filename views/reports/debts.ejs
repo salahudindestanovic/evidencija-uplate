@@ -1,0 +1,38 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; %>
+<%- include('tabs', { csvUrl: '/izvjestaji/dugovanja' + h.qs({ grupa, format: 'csv' }) }) %>
+
+<div class="stats stats-2" style="max-width:520px;margin-bottom:16px">
+  <div class="stat"><div class="stat-label">Ukupno dugovanje</div><div class="stat-value <%= total > 0 ? 't-red' : '' %>"><%= h.amount(total) %><span class="unit"><%= cur %></span></div></div>
+  <div class="stat"><div class="stat-label">Broj dužnika</div><div class="stat-value"><%= rowCount.toLocaleString('de-DE') %></div></div>
+</div>
+
+<div class="panel">
+  <form class="toolbar" method="get">
+    <select name="grupa" onchange="this.form.submit()" aria-label="Grupa"><option value="">Sve grupe</option>
+      <% for (const c of classes) { %><option value="<%= c.id %>" <%= grupa === c.id ? 'selected' : '' %>><%= showDept ? c.department_name + ' — ' : '' %><%= c.name %></option><% } %>
+    </select>
+  </form>
+  <% if (!rows.length) { %><div class="empty">Nema dugovanja.</div><% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Učenik</th><% if (showDept) { %><th>Odjeljenje</th><% } %><th>Grupa</th><th>Roditelj</th><th>Telefon</th><th>Neplaćeni mjeseci</th><th class="num">Dug (<%= cur %>)</th><th class="w-1"></th></tr></thead>
+    <tbody>
+    <% for (const r of rows) { %>
+      <tr class="row-link" data-href="/ucenici/<%= r.id %>">
+        <td class="strong"><a href="/ucenici/<%= r.id %>"><%= r.last_name %> <%= r.first_name %></a></td>
+        <% if (showDept) { %><td><%= placeOf(r) %></td><% } %>
+        <td><%= r.class_name %></td>
+        <td><%= r.parent_name || '—' %></td>
+        <td class="nowrap"><% if (r.phone) { %><a href="tel:<%= r.phone %>"><%= r.phone %></a><% } else { %>—<% } %></td>
+        <td><span class="tag"><%= r.months %></span> <span class="small muted"><%= r.periods.map(h.periodShort).join(', ') %></span></td>
+        <td class="num t-red"><%= h.amount(r.debt) %></td>
+        <td class="w-1"><a class="icon-btn" href="/ucenici/<%= r.id %>/podsjetnik?nazad=/izvjestaji/dugovanja" title="Pošalji podsjetnik" aria-label="Pošalji podsjetnik"><%- h.icon('bell', 16) %></a></td>
+      </tr>
+    <% } %>
+    </tbody>
+    <tfoot><tr><td colspan="<%= showDept ? 6 : 5 %>">Ukupno</td><td class="num"><%= h.amount(total) %></td><td></td></tr></tfoot>
+  </table></div>
+  <% if (rowCount > rows.length) { %><div class="panel-foot">Prikazano prvih <%= rows.length %> od <%= rowCount %>. Kompletan spisak je u Excel izvozu.</div><% } %>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

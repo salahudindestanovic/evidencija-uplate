@@ -1,0 +1,20 @@
+<div class="page-header">
+  <div class="ph-row">
+    <div><h1>Izvještaji</h1><p class="ph-meta"><%- h.icon('map-pin', 14) %> <%= placeLabel %></p></div>
+    <div class="ph-actions">
+      <% if (typeof printUrl !== 'undefined' && printUrl) { %>
+        <a class="btn btn-primary" href="<%= printUrl %>"><%- h.icon('printer') %>Izvještaj za upravu</a>
+        <a class="btn" href="<%= printUrl.replace('/stampa', '/word') %>"><%- h.icon('file-text') %>Word</a>
+      <% } else { %>
+        <button class="btn hide-sm" type="button" onclick="window.print()"><%- h.icon('printer') %>Štampaj</button>
+      <% } %>
+      <a class="btn" href="<%= csvUrl %>"><%- h.icon('file-spreadsheet') %>Excel</a>
+    </div>
+  </div>
+</div>
+<nav class="tabs">
+  <a href="/izvjestaji" class="<%= tab === 'pregled' ? 'active' : '' %>">Pregled</a>
+  <a href="/izvjestaji/dugovanja" class="<%= tab === 'dugovanja' ? 'active' : '' %>">Svi dužnici</a>
+  <a href="/izvjestaji/blagajna" class="<%= tab === 'blagajna' ? 'active' : '' %>">Sve uplate</a>
+  <a href="/izvjestaji/dnevnik" class="<%= tab === 'dnevnik' ? 'active' : '' %>">Dnevnik promjena</a>
+</nav>

@@ -1,0 +1,12 @@
+<% if (!students.length) { %>
+  <div class="empty"><%= q ? 'Nema učenika za "' + q + '".' : 'Nema učenika.' %></div>
+<% } else { %>
+  <% for (const s of students) { %>
+    <a href="/uplate/nova?ucenik=<%= s.id %>">
+      <span class="who"><span class="avatar"><%= h.initials(s.first_name + ' ' + s.last_name) %></span>
+        <span><span style="font-weight:500"><%= s.last_name %> <%= s.first_name %></span><span class="small muted"><%= [showDept ? placeOf(s) : null, s.class_name || 'Bez grupe'].filter(Boolean).join(' · ') %></span></span></span>
+      <% if (s.debt > 0) { %><span class="small t-red nowrap">Dug <%= h.money(s.debt, settings.currency) %></span><% } else { %><span class="small muted">Bez duga</span><% } %>
+    </a>
+  <% } %>
+  <% if (total > students.length) { %><div class="empty small">Prikazano <%= students.length %> od <%= total %>. Upišite ime za precizniju pretragu.</div><% } %>
+<% } %>

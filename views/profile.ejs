@@ -1,0 +1,22 @@
+<%- include('partials/head') %>
+<div class="page-header">
+  <div class="ph-row"><h1>Moj profil</h1></div>
+  <p class="ph-meta"><%= user.name %> · <%= user.username %> · <%= ROLES[user.role] %><%= user.branch_name ? ' · ' + user.branch_name : '' %></p>
+</div>
+<div class="panel form-panel">
+  <form method="post" action="/profil">
+    <div class="form-section">
+      <header><h3>Promjena lozinke</h3><p>Nova lozinka mora imati najmanje 8 znakova.</p></header>
+      <div>
+        <% if (error) { %><div class="notice notice-error"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+        <div class="fields">
+          <div class="full"><label for="current">Trenutna lozinka</label><input type="password" id="current" name="current" autocomplete="current-password" required></div>
+          <div><label for="password">Nova lozinka</label><input type="password" id="password" name="password" autocomplete="new-password" minlength="8" required></div>
+          <div><label for="password2">Potvrda nove lozinke</label><input type="password" id="password2" name="password2" autocomplete="new-password" required></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-foot"><button class="btn btn-primary">Sačuvaj lozinku</button></div>
+  </form>
+</div>
+<%- include('partials/foot') %>

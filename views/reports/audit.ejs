@@ -1,0 +1,52 @@
+<%- include('../partials/head') %>
+<%- include('tabs', { csvUrl: '/izvjestaji/dnevnik' + h.qs({ od: from, do: to, vrsta, format: 'csv' }) }) %>
+
+<form class="no-print toolbar-plain" method="get">
+  <input type="date" name="od" value="<%= from %>" aria-label="Od datuma">
+  <span class="muted">—</span>
+  <input type="date" name="do" value="<%= to %>" aria-label="Do datuma">
+  <select name="vrsta" aria-label="Vrsta promjene">
+    <option value="">Sve promjene</option>
+    <% for (const [k, v] of Object.entries(ACTIONS)) { %><option value="<%= k %>" <%= vrsta === k ? 'selected' : '' %>><%= v %></option><% } %>
+  </select>
+  <button class="btn">Primijeni</button>
+</form>
+
+<div class="panel">
+  <div class="panel-head"><h2>Promjene <span class="count"><%= rowCount %></span></h2>
+    <span class="small muted">Storniranja, izmjene zaduženja i cijena, brisanja učenika</span></div>
+  <% if (!rows.length) { %>
+    <div class="empty"><strong>Nema promjena</strong>U odabranom periodu niko nije stornirao uplatu niti mijenjao zaduženja.</div>
+  <% } else { %>
+  <div class="m-list">
+    <% for (const r of rows) { %>
+      <div class="m-item" style="align-items:flex-start">
+        <div class="m-main">
+          <span class="m-name"><%= ACTIONS[r.action] || r.action %><% if (r.amount != null) { %> · <%= h.money(r.amount, settings.currency) %><% } %></span>
+          <span class="m-sub" style="white-space:normal"><%= r.student_name %><%= showDept ? ' · ' + placeOf(r) : '' %></span>
+          <span class="small" style="color:var(--text-2)"><%= r.details %></span>
+          <span class="m-sub"><%= h.formatDate(r.created_at) %> <%= r.created_at.slice(11, 16) %> · <%= r.user_name %></span>
+        </div>
+      </div>
+    <% } %>
+  </div>
+  <div class="table-wrap hide-sm"><table class="list-table">
+    <thead><tr><th>Vrijeme</th><th>Promjena</th><th>Učenik</th><th>Detalji</th><th>Izvršio</th><th class="num">Iznos (<%= settings.currency %>)</th></tr></thead>
+    <tbody>
+    <% for (const r of rows) { %>
+      <tr>
+        <td class="nowrap"><%= h.formatDate(r.created_at) %> <span class="muted"><%= r.created_at.slice(11, 16) %></span></td>
+        <td><span class="tag"><%= ACTIONS[r.action] || r.action %></span></td>
+        <td class="strong"><% if (r.student_id && r.action !== 'brisanje') { %><a href="/ucenici/<%= r.student_id %>"><%= r.student_name %></a><% } else { %><%= r.student_name %><% } %>
+          <% if (showDept) { %><span class="sub"><%= placeOf(r) %></span><% } %></td>
+        <td><%= r.details %></td>
+        <td class="muted"><%= r.user_name %></td>
+        <td class="num"><%= r.amount == null ? '' : h.amount(r.amount) %></td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <% if (rowCount > rows.length) { %><div class="panel-foot">Prikazano posljednjih <%= rows.length %> od <%= rowCount %>. Kompletan spisak je u Excel izvozu.</div><% } %>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

@@ -1,0 +1,61 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; const isAdmin = isFinance; %>
+<div class="page-header">
+  <div class="ph-row">
+    <h1><%= title %></h1>
+    <div class="ph-actions">
+      <% if (isAdmin) { %><a class="btn" href="/izvjestaji/blagajna<%= h.qs({ od: from, do: to, format: 'csv' }) %>"><%- h.icon('download') %>Izvoz</a><% } %>
+      <% if (canRecord) { %><a class="btn btn-primary" href="/uplate/nova"><%- h.icon('plus') %>Nova uplata</a><% } %>
+    </div>
+  </div>
+</div>
+
+<div class="panel">
+  <form class="toolbar" method="get" action="/uplate">
+    <input type="date" name="od" value="<%= from %>" aria-label="Od datuma">
+    <span class="muted">—</span>
+    <input type="date" name="do" value="<%= to %>" aria-label="Do datuma">
+    <select name="grupa" aria-label="Grupa"><option value="">Sve grupe</option>
+      <% for (const c of classes) { %><option value="<%= c.id %>" <%= grupa === c.id ? 'selected' : '' %>><%= c.name %></option><% } %>
+    </select>
+    <select name="metoda" aria-label="Način plaćanja"><option value="">Svi načini plaćanja</option>
+      <% for (const [k, v] of Object.entries(h.METHODS)) { %><option value="<%= k %>" <%= metoda === k ? 'selected' : '' %>><%= v %></option><% } %>
+    </select>
+    <% if (moje) { %><input type="hidden" name="moje" value="1"><% } %>
+    <button class="btn">Primijeni</button>
+    <a class="chip <%= moje ? 'active' : '' %>" href="/uplate<%= h.qs({ od: from, do: to, grupa, metoda, moje: moje ? null : 1 }) %>">Samo moje</a>
+  </form>
+  <% if (!payments.length) { %>
+    <div class="empty"><strong>Nema uplata</strong>U odabranom periodu nema evidentiranih uplata.</div>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Datum</th><th>Učenik</th><% if (showDept) { %><th class="hide-sm">Odjeljenje</th><% } %><th class="hide-sm">Grupa</th><th>Za mjesec</th><th class="hide-sm">Priznanica</th><th class="hide-sm">Način</th><th class="hide-sm">Evidentirao</th><th class="num">Iznos (<%= cur %>)</th><% if (isAdmin) { %><th class="w-1"></th><% } %></tr></thead>
+    <tbody>
+    <% for (const p of payments) { %>
+      <tr>
+        <td class="nowrap"><%= h.formatDate(p.paid_on) %></td>
+        <td class="strong"><a href="/ucenici/<%= p.student_id %>"><%= p.last_name %> <%= p.first_name %></a><% if (p.note) { %><span class="sub"><%= p.note %></span><% } %></td>
+        <% if (showDept) { %><td class="hide-sm"><%= placeOf(p) %></td><% } %>
+        <td class="hide-sm"><%= p.class_name || '—' %></td>
+        <td><%= h.periodLabel(p.period) %></td>
+        <td class="hide-sm nowrap"><% if (p.receipt_id) { %><a href="/priznanice/<%= p.receipt_id %>"><%= p.receipt_number %></a><% } else { %><span class="muted">—</span><% } %></td>
+        <td class="hide-sm"><%= h.METHODS[p.method] || p.method %></td>
+        <td class="muted hide-sm"><%= p.created_by_name || '' %></td>
+        <td class="num"><%= h.amount(p.amount) %></td>
+        <% if (isAdmin) { %>
+        <td class="w-1">
+          <form method="post" action="/uplate/<%= p.id %>/obrisi" data-reason data-confirm="Stornirati uplatu od <%= h.money(p.amount, cur) %>?">
+            <input type="hidden" name="back" value="/uplate<%= h.qs({ od: from, do: to, grupa, metoda }) %>">
+            <input type="hidden" name="reason"><button class="link-btn danger">Storniraj</button>
+          </form>
+        </td>
+        <% } %>
+      </tr>
+    <% } %>
+    </tbody>
+    <tfoot><tr><td colspan="<%= showDept ? 8 : 7 %>" class="hide-sm">Ukupno · <%= pager.total %> <%= h.plural(pager.total, 'uplata', 'uplate', 'uplata') %></td><td colspan="3" class="show-sm-cell">Ukupno · <%= pager.total %></td><td class="num"><%= h.amount(total) %></td><% if (isAdmin) { %><td></td><% } %></tr></tfoot>
+  </table></div>
+  <%- include('../partials/pager', { pager, query: { od: from, do: to, grupa, metoda, moje: moje ? 1 : null } }) %>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

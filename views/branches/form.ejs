@@ -1,0 +1,41 @@
+<%- include('../partials/head') %>
+<%
+  const isNew = !place.id;
+  const isDept = kind === 'department';
+  const action = isDept ? (isNew ? `/gradovi/${city.id}/odjeljenja` : `/gradovi/odjeljenja/${place.id}`) : (isNew ? '/gradovi' : `/gradovi/${place.id}`);
+  const back = isDept ? `/gradovi/${city.id}` : (isNew ? '/gradovi' : `/gradovi/${place.id}`);
+%>
+<div class="page-header">
+  <div class="crumbs">
+    <a href="/gradovi">Gradovi</a><%- h.icon('chevron-right', 14) %>
+    <% if (isDept) { %><a href="/gradovi/<%= city.id %>"><%= city.name %></a><%- h.icon('chevron-right', 14) %><% } %>
+    <span><%= isNew ? (isDept ? 'Novo odjeljenje' : 'Novi grad') : place.name %></span>
+  </div>
+  <div class="ph-row"><h1><%= title %></h1></div>
+</div>
+
+<% if (error) { %><div class="notice notice-error form-panel"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+
+<div class="panel form-panel">
+  <form method="post" action="<%= action %>">
+    <div class="form-section">
+      <header>
+        <h3><%= isDept ? 'Odjeljenje' : 'Grad' %></h3>
+        <p><%= isDept ? 'Mjesto gdje se održava nastava, npr. džamija ili islamski centar.' : 'Grad ili područje (npr. Vojvodina, Dijaspora) s jednim ili više odjeljenja.' %></p>
+      </header>
+      <div class="fields">
+        <div class="full"><label for="name">Naziv</label><input type="text" id="name" name="name" value="<%= place.name || '' %>" required <%= isNew ? 'autofocus' : '' %>></div>
+        <div class="full"><label for="address">Adresa <span class="opt">(opcionalno)</span></label><input type="text" id="address" name="address" value="<%= place.address || '' %>"></div>
+      </div>
+    </div>
+    <% if (!isNew) { %>
+    <div class="form-section">
+      <header><h3>Status</h3><p>Arhivirano mjesto ostaje u izvještajima.</p></header>
+      <div><label class="check"><input type="checkbox" name="active" value="0" <%= place.active ? '' : 'checked' %>>
+        <span><strong>Arhiviraj</strong><span class="hint" style="margin-top:2px">Više se ne nudi u izboru u meniju i pri upisu.</span></span></label></div>
+    </div>
+    <% } %>
+    <div class="form-foot"><a class="btn" href="<%= back %>">Odustani</a><button class="btn btn-primary"><%= isNew ? 'Dodaj' : 'Sačuvaj' %></button></div>
+  </form>
+</div>
+<%- include('../partials/foot') %>

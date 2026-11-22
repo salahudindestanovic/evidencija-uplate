@@ -1,0 +1,244 @@
+<%- include('../partials/head') %>
+<%
+  const cur = settings.currency;
+  const t = main.totals;
+  const q = P.kind === 'godina' ? { vrsta: 'godina', godina: P.year } : { mjesec: P.month };
+  const levelTitle = { branch: 'Po gradovima', department: 'Po odjeljenjima', class: 'Po grupama' }[level];
+  const detailTitle = detail ? { department: 'Sva odjeljenja', class: 'Sve grupe' }[detail.level] : '';
+  const when = P.kind === 'godina' ? `U školskoj godini ${h.schoolYearLabel(P.year, P.startMonth)}` : `U ${h.periodLocative(P.month)}`;
+  const people = (n) => `${n.toLocaleString('de-DE')} ${h.plural(n, 'učenik', 'učenika', 'učenika')}`;
+  const maxTrend = Math.max(1, ...trend.map((m) => m.due));
+  const pill = (p) => (p < 50 ? 'low' : p < 80 ? 'mid' : 'ok');
+  const sections = [['naplata', 'Naplata'], ['programi', 'Nivoi nastave'], ['mjeseci', P.kind === 'godina' ? 'Po mjesecima' : 'Kretanje'], ['dugovi', 'Dugovanja'],
+    ...(P.kind === 'mjesec' ? [['nisu-platili', `Nisu platili (${unpaidCount})`]] : []), ['novac', 'Novac']];
+%>
+<%- include('tabs', { csvUrl: '/izvjestaji/excel' + h.qs(q), printUrl: '/izvjestaji/stampa' + h.qs(q) }) %>
+
+<div class="period-bar no-print">
+  <div class="segmented" role="group" aria-label="Period">
+    <a class="<%= P.kind === 'mjesec' ? 'active' : '' %>" href="/izvjestaji">Mjesec</a>
+    <a class="<%= P.kind === 'godina' ? 'active' : '' %>" href="/izvjestaji?vrsta=godina">Školska godina</a>
+  </div>
+  <div class="stepper">
+    <a href="/izvjestaji<%= h.qs(P.prev) %>" aria-label="Prethodni period"><%- h.icon('chevron-left') %></a>
+    <span><%= P.label %></span>
+    <a href="/izvjestaji<%= h.qs(P.next) %>" aria-label="Sljedeći period"><%- h.icon('chevron-right') %></a>
+  </div>
+  <% if (!P.isCurrent) { %><a class="small" href="/izvjestaji<%= P.kind === 'godina' ? '?vrsta=godina' : '' %>">Tekući</a><% } %>
+</div>
+
+<nav class="chips section-nav no-print" aria-label="Dijelovi izvještaja">
+  <% for (const [id, label] of sections) { %><a class="chip" href="#<%= id %>"><%= label %></a><% } %>
+</nav>
+
+<% if (!t.due) { %>
+  <div class="panel" style="margin-top:16px"><div class="empty"><strong>Nema zaduženja</strong>Za ovaj period nema obračunate članarine.</div></div>
+<% } else { %>
+
+<%# ---------------- Naplata ---------------- %>
+<section class="report-section" id="naplata">
+  <h2 class="q-title">Naplata članarine</h2>
+  <p class="lead">
+    <%= when %><%= P.isCurrent ? (P.kind === 'godina' ? ' (godina je u toku)' : ' (mjesec je u toku)') : '' %> naplaćeno je <strong><%= h.money(t.paid, cur) %></strong>
+    od <strong><%= h.money(t.due, cur) %></strong> (<strong><%= h.pct(t.paid, t.due) %> %</strong>). Članarinu je u potpunosti izmirilo
+    <%= t.paid_count.toLocaleString('de-DE') %> od <%= people(t.students) %>, a otvoreno je još <strong class="t-red"><%= h.money(t.remaining, cur) %></strong>.
+  </p>
+  <% if (transport && transport.due) { %><p class="compare"><%- h.icon('bus', 15) %><span>Od zaduženja <%= h.money(t.due - transport.due, cur) %> je članarina, a <%= h.money(transport.due, cur) %> prevoz kombijem (<%= people(transport.students) %>).</span></p><% } %>
+  <% if (comparison) { %><p class="compare"><%- h.icon('chart-column', 15) %><span><%= comparison %></span></p><% } %>
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Zaduženo</div><div class="stat-value"><%= h.amount(t.due) %><span class="unit"><%= cur %></span></div><div class="stat-foot"><%= people(t.students) %></div></div>
+    <div class="stat"><div class="stat-label">Naplaćeno</div><div class="stat-value"><%= h.amount(t.paid) %><span class="unit"><%= cur %></span></div>
+      <div class="meter"><i style="width: <%= h.pct(t.paid, t.due) %>%"></i></div><div class="stat-foot"><%= h.pct(t.paid, t.due) %> % naplate</div></div>
+    <div class="stat"><div class="stat-label">Nenaplaćeno</div><div class="stat-value t-red"><%= h.amount(t.remaining) %><span class="unit"><%= cur %></span></div><div class="stat-foot"><%= people(t.unpaid_count) %> nije platilo sve</div></div>
+    <div class="stat"><div class="stat-label">Izmirilo sve</div><div class="stat-value"><%= t.paid_count.toLocaleString('de-DE') %></div><div class="stat-foot">od <%= t.students.toLocaleString('de-DE') %> učenika</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2><%= levelTitle %></h2><span class="small muted hide-sm"><%= level === 'class' ? 'Dodirnite grupu za spisak učenika' : 'Dodirnite red za detalje' %></span></div>
+    <%- include('../partials/breakdown', { b: main, cur }) %>
+  </div>
+
+  <% if (detail && detail.rows.length) { %>
+  <% const sorted = [...detail.rows].sort((a, b) => h.pct(a.paid, a.due) - h.pct(b.paid, b.due) || b.remaining - a.remaining); %>
+  <div class="panel">
+    <div class="panel-head"><h2><%= detailTitle %> <span class="count"><%= detail.rows.length %></span></h2><span class="small muted hide-sm">Od najslabije naplate prema najboljoj</span></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th><%= detail.level === 'class' ? 'Grupa' : 'Odjeljenje' %></th><th class="num">Učenika</th><th class="num hide-sm">Zaduženo</th><th class="num hide-sm">Naplaćeno</th><th class="num">Nenaplaćeno</th><th class="num">Naplata</th></tr></thead>
+      <tbody>
+      <% sorted.forEach((r, i) => { %>
+        <tr <%= i >= 12 ? 'data-more hidden' : '' %> <% if (detail.level === 'class' && r.id) { %>class="row-link" data-href="/ucenici?grupa=<%= r.id %>"<% } %>>
+          <td class="strong"><%= r.name %><span class="sub"><%= [detail.level === 'class' ? r.department_name : r.branch_name, detail.level === 'class' ? r.teacher_name : null].filter(Boolean).join(' · ') %></span></td>
+          <td class="num"><%= r.students %></td>
+          <td class="num hide-sm"><%= h.amount(r.due) %></td>
+          <td class="num hide-sm"><%= h.amount(r.paid) %></td>
+          <td class="num <%= r.remaining ? 't-red' : 'muted' %>"><%= h.amount(r.remaining) %></td>
+          <td class="num"><span class="pct-pill <%= pill(h.pct(r.paid, r.due)) %>"><%= h.pct(r.paid, r.due) %> %</span></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+    <% if (sorted.length > 12) { %><div class="panel-foot"><button type="button" class="link-btn" data-reveal><%- h.icon('chevron-down', 14) %> Prikaži sve (<%= sorted.length %>)</button></div><% } %>
+  </div>
+  <% } %>
+</section>
+
+<%# ---------------- Nivoi nastave ---------------- %>
+<section class="report-section" id="programi">
+  <h2 class="q-title">Po nivoima nastave</h2>
+  <div class="program-cards">
+    <% for (const p of byProgram) { %>
+      <div class="program-card">
+        <div class="pc-head"><strong><%= p.name %></strong><span class="muted small"><%= people(p.students) %></span></div>
+        <div class="pc-value"><%= h.pct(p.paid, p.due) %> %<span class="muted small"> naplaćeno</span></div>
+        <div class="meter"><i style="width: <%= h.pct(p.paid, p.due) %>%"></i></div>
+        <div class="pc-foot"><span><%= h.money(p.paid, cur) %> od <%= h.money(p.due, cur) %></span><% if (p.remaining) { %><span class="t-red">otvoreno <%= h.money(p.remaining, cur) %></span><% } %></div>
+      </div>
+    <% } %>
+  </div>
+</section>
+
+<%# ---------------- Po mjesecima / kretanje ---------------- %>
+<section class="report-section" id="mjeseci">
+  <h2 class="q-title"><%= P.kind === 'godina' ? 'Naplata po mjesecima' : 'Kretanje naplate (posljednjih 6 mjeseci)' %></h2>
+  <div class="panel">
+    <div class="panel-body">
+      <div class="legend" style="margin-bottom:10px"><span><i style="background:#eceff3;border:1px solid var(--border)"></i>Zaduženo</span><span><i style="background:var(--green)"></i>Naplaćeno</span></div>
+      <div class="bars" style="grid-template-columns: repeat(<%= Math.max(trend.length, 1) %>, minmax(0, 1fr))">
+        <% for (const m of trend) { %>
+          <a class="bar-col" href="/izvjestaji?mjesec=<%= m.period %>" title="<%= h.periodLabel(m.period) %>: <%= h.money(m.paid, cur) %> od <%= h.money(m.due, cur) %>">
+            <small class="bar-pct"><%= m.due ? h.pct(m.paid, m.due) + '%' : '' %></small>
+            <div class="bar-stack" style="height: <%= (m.due / maxTrend * 80).toFixed(1) %>%"><i style="height: <%= m.due ? Math.min(100, m.paid / m.due * 100).toFixed(1) : 0 %>%"></i></div>
+            <span class="<%= m.period === P.month ? 'strong' : '' %>"><%= h.MONTH_SHORT[h.monthOf(m.period) - 1] %></span>
+          </a>
+        <% } %>
+      </div>
+    </div>
+    <div class="table-wrap" style="border-top:1px solid var(--border)"><table>
+      <thead><tr><th>Mjesec</th><th class="num hide-sm">Učenika</th><th class="num">Zaduženo</th><th class="num">Naplaćeno</th><th class="num hide-sm">Nije platilo</th><th class="num">Naplata</th></tr></thead>
+      <tbody>
+      <% for (const m of trend) { if (!m.due && !m.paid) continue; %>
+        <tr class="row-link <%= m.period === P.month ? 'current-row' : '' %>" data-href="/izvjestaji?mjesec=<%= m.period %>">
+          <td class="strong"><a href="/izvjestaji?mjesec=<%= m.period %>"><%= h.periodLabel(m.period).replace(/\.$/, '') %></a></td>
+          <td class="num hide-sm"><%= m.students.toLocaleString('de-DE') %></td>
+          <td class="num"><%= h.amount(m.due) %></td>
+          <td class="num"><%= h.amount(m.paid) %></td>
+          <td class="num hide-sm"><%= m.unpaid.toLocaleString('de-DE') %></td>
+          <td class="num"><span class="pct-pill <%= pill(h.pct(m.paid, m.due)) %>"><%= h.pct(m.paid, m.due) %> %</span></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+<% } %>
+
+<%# ---------------- Dugovanja ---------------- %>
+<section class="report-section" id="dugovi">
+  <h2 class="q-title">Dugovanja</h2>
+  <% if (!debtorCount) { %>
+    <div class="panel"><div class="empty"><strong>Niko ne duguje</strong>Sve članarine su izmirene.</div></div>
+  <% } else { %>
+  <p class="lead">Do danas ukupno duguje <strong><%= people(debtorCount) %></strong>, zajedno <strong class="t-red"><%= h.money(debtTotal, cur) %></strong> (svi neplaćeni mjeseci, bez obzira na odabrani period).</p>
+  <div class="aging">
+    <% aging.forEach((a, i) => { %>
+      <div class="aging-card <%= i === 2 ? 'severe' : '' %>">
+        <span class="aging-label">Duguje <%= a.label %></span>
+        <strong><%= people(a.students) %></strong>
+        <span class="aging-amount"><%= h.money(a.debt, cur) %></span>
+      </div>
+    <% }) %>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><h2>Najveći dugovi</h2><a class="small" href="/izvjestaji/dugovanja">Svi dužnici (<%= debtorCount %>)</a></div>
+    <div class="table-wrap"><table class="list-table">
+      <tbody>
+      <% for (const d of topDebtors) { %>
+        <tr class="row-link" data-href="/ucenici/<%= d.id %>">
+          <td class="strong"><a href="/ucenici/<%= d.id %>"><%= d.last_name %> <%= d.first_name %></a>
+            <span class="sub"><%= [showDept ? placeOf(d) : null, d.class_name || 'Bez grupe'].filter(Boolean).join(' · ') %> · <%= d.months %> <%= h.plural(d.months, 'mjesec', 'mjeseca', 'mjeseci') %></span></td>
+          <td class="hide-sm nowrap"><% if (d.phone) { %><a href="tel:<%= d.phone %>"><%= d.phone %></a><% } %></td>
+          <td class="num t-red"><%= h.money(d.debt, cur) %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table></div>
+  </div>
+  <% } %>
+</section>
+
+<%# ---------------- Nisu platili ovaj mjesec ---------------- %>
+<% if (P.kind === 'mjesec') { %>
+<section class="report-section" id="nisu-platili">
+  <h2 class="q-title">Nisu platili za <%= h.periodLabel(P.month).replace(/\.$/, '').toLowerCase() %></h2>
+  <% if (!unpaid.length) { %>
+    <div class="panel"><div class="empty"><strong>Svi su platili</strong>Članarina za ovaj mjesec je izmirena.</div></div>
+  <% } else { %>
+  <p class="lead"><%= people(unpaidCount) %> nije platilo članarinu za ovaj mjesec. Spisak je po odjeljenjima i grupama, s brojevima roditelja — za pozive i podsjetnike.</p>
+  <div class="panel">
+    <div class="panel-head"><h2>Spisak <span class="count"><%= unpaidCount %></span></h2><a class="small" href="/izvjestaji/nisu-platili<%= h.qs({ mjesec: P.month }) %>"><%- h.icon('file-spreadsheet', 14) %> Excel</a></div>
+    <div class="table-wrap"><table class="list-table">
+      <thead><tr><th>Učenik</th><th class="hide-sm">Roditelj</th><th>Telefon</th><th class="num">Za mjesec</th><th class="num hide-sm">Ukupno duguje</th><th class="w-1"></th></tr></thead>
+      <tbody>
+      <% let lastGroup = null; unpaid.forEach((u, i) => { const group = [showDept ? placeOf(u) : null, u.class_name].filter(Boolean).join(' · ');
+           const hide = i >= 60 ? 'data-more hidden' : '';
+           if (group !== lastGroup) { lastGroup = group; %>
+        <tr class="group-row" <%- hide %>><td colspan="6"><%= group %></td></tr>
+      <% } %>
+        <tr <%- hide %>>
+          <td class="strong"><a href="/ucenici/<%= u.student_id %>"><%= u.last_name %> <%= u.first_name %></a><span class="sub show-sm"><%= u.parent_name %></span></td>
+          <td class="hide-sm"><%= u.parent_name || '—' %></td>
+          <td class="nowrap"><% if (u.phone) { %><a href="tel:<%= u.phone %>"><%= u.phone %></a><% } else { %>—<% } %></td>
+          <td class="num t-red"><%= h.amount(u.due - u.paid) %></td>
+          <td class="num hide-sm"><%= u.open_months %> mj.</td>
+          <td class="w-1"><a class="icon-btn" href="/ucenici/<%= u.student_id %>/podsjetnik?nazad=/izvjestaji%23nisu-platili" title="Pošalji podsjetnik" aria-label="Pošalji podsjetnik"><%- h.icon('bell', 16) %></a></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table></div>
+    <% if (unpaid.length > 60) { %><div class="panel-foot"><button type="button" class="link-btn" data-reveal><%- h.icon('chevron-down', 14) %> Prikaži <%= unpaidCount > unpaid.length ? 'prvih ' + unpaid.length : 'sve (' + unpaid.length + ')' %></button></div><% } %>
+    <% if (unpaidCount > unpaid.length) { %><div class="panel-foot">Kompletan spisak (<%= unpaidCount %>) je u <a href="/izvjestaji/nisu-platili<%= h.qs({ mjesec: P.month }) %>">Excelu</a>, ili odaberite grad/odjeljenje u meniju.</div><% } %>
+  </div>
+  <% } %>
+</section>
+<% } %>
+
+<%# ---------------- Novac ---------------- %>
+<section class="report-section" id="novac">
+  <h2 class="q-title">Primljeni novac</h2>
+  <p class="lead">Od <%= h.formatDate(cashFrom) %> do <%= h.formatDate(cashTo) %> primljeno je <strong><%= h.money(cash.total, cur) %></strong>
+    u <%= cash.count.toLocaleString('de-DE') %> <%= h.plural(cash.count, 'uplati', 'uplate', 'uplata') %>
+    — gotovinom <strong><%= h.money(cash.gotovina, cur) %></strong>, preko banke <strong><%= h.money(cash.banka + cash.ostalo, cur) %></strong>.
+    <span class="muted">Uključuje i izmirenje starih dugova i plaćanja unaprijed.</span></p>
+  <div class="<%= cashByPlace && cashByPlace.length ? 'cols cols-even' : '' %>">
+    <% if (cashByPlace && cashByPlace.length) { %>
+    <div class="panel">
+      <div class="panel-head"><h2><%= level === 'branch' ? 'Po gradovima' : 'Po odjeljenjima' %></h2></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th><%= level === 'branch' ? 'Grad' : 'Odjeljenje' %></th><th class="num">Gotovina</th><th class="num hide-sm">Banka</th><th class="num">Ukupno</th></tr></thead>
+        <tbody><% for (const c of cashByPlace) { %><tr><td class="strong"><%= c.name || '—' %></td><td class="num"><%= h.amount(c.gotovina) %></td><td class="num hide-sm"><%= h.amount(c.total - c.gotovina) %></td><td class="num"><%= h.amount(c.total) %></td></tr><% } %></tbody>
+        <tfoot><tr><td>Ukupno</td><td class="num"><%= h.amount(cash.gotovina) %></td><td class="num hide-sm"><%= h.amount(cash.banka + cash.ostalo) %></td><td class="num"><%= h.amount(cash.total) %></td></tr></tfoot>
+      </table></div>
+    </div>
+    <% } %>
+    <% if (byPerson.length) { %>
+    <div class="panel">
+      <div class="panel-head"><h2>Ko je primio novac</h2><a class="small" href="/izvjestaji/blagajna<%= h.qs({ od: cashFrom, do: cashTo }) %>">Sve uplate</a></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Primio</th><th class="num hide-sm">Uplata</th><th class="num">Gotovina</th><th class="num">Ukupno</th></tr></thead>
+        <tbody>
+        <% byPerson.forEach((p, i) => { %>
+          <tr <%= i >= 8 ? 'data-more hidden' : '' %>>
+            <td class="strong"><%= p.name %><span class="sub"><%= ROLES[p.role] || '' %></span></td>
+            <td class="num hide-sm"><%= p.count %></td>
+            <td class="num"><%= h.amount(p.gotovina) %></td>
+            <td class="num"><%= h.amount(p.total) %></td>
+          </tr>
+        <% }) %>
+        </tbody>
+      </table></div>
+      <% if (byPerson.length > 8) { %><div class="panel-foot"><button type="button" class="link-btn" data-reveal><%- h.icon('chevron-down', 14) %> Prikaži sve (<%= byPerson.length %>)</button></div><% } %>
+    </div>
+    <% } %>
+  </div>
+</section>
+<%- include('../partials/foot') %>

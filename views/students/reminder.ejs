@@ -1,0 +1,34 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; %>
+<div class="page-header">
+  <div class="crumbs"><a href="/ucenici/<%= student.id %>"><%= student.first_name %> <%= student.last_name %></a><%- h.icon('chevron-right', 14) %><span>Podsjetnik</span></div>
+  <div class="ph-row"><h1>Podsjetnik roditelju</h1></div>
+  <p class="ph-meta"><span><%= student.parent_name || 'Roditelj' %></span><span><%= student.phone || 'nema broja telefona' %></span></p>
+</div>
+
+<div class="form-panel">
+  <% if (!open.length) { %>
+    <div class="panel"><div class="empty"><strong>Nema duga</strong><%= student.first_name %> je izmirio/la sve članarine.</div></div>
+  <% } else { %>
+  <div class="panel">
+    <div class="panel-head"><h2>Duguje <span class="t-red"><%= h.money(total, cur) %></span></h2><span class="small muted"><%= open.length %> <%= h.plural(open.length, 'mjesec', 'mjeseca', 'mjeseci') %></span></div>
+    <div class="panel-body">
+      <label for="msg">Poruka</label>
+      <textarea id="msg" rows="5" data-reminder-text><%= text %></textarea>
+      <span class="hint">Možete je izmijeniti prije slanja. Uzorak poruke mijenja se u Postavkama.</span>
+    </div>
+    <div class="reminder-actions">
+      <% if (phone) { %>
+        <a class="btn btn-wa" data-reminder-link="https://wa.me/<%= phone %>?text=" href="https://wa.me/<%= phone %>?text=<%= encodeURIComponent(text) %>" target="_blank" rel="noopener"><%- h.icon('message-circle') %>WhatsApp</a>
+        <a class="btn btn-viber" href="viber://chat?number=%2B<%= phone %>" data-copy-before><%- h.icon('message-square-text') %>Viber</a>
+        <a class="btn" data-reminder-link="sms:+<%= phone %>?&body=" href="sms:+<%= phone %>?&body=<%= encodeURIComponent(text) %>"><%- h.icon('smartphone') %>SMS</a>
+      <% } %>
+      <button class="btn" type="button" data-copy-reminder><%- h.icon('copy') %>Kopiraj poruku</button>
+    </div>
+    <% if (phone) { %><div class="panel-foot small">Viber ne dozvoljava unaprijed upisanu poruku — dugme Viber kopira poruku, otvori razgovor s roditeljem, pa je samo zalijepite.</div>
+    <% } else { %><div class="panel-foot small">Učenik nema upisan broj telefona roditelja. <% if (canEditStudents) { %><a href="/ucenici/<%= student.id %>/uredi">Dodaj broj</a><% } %></div><% } %>
+  </div>
+  <% } %>
+  <p style="margin-top:14px"><a href="<%= back %>"><%- h.icon('arrow-left', 14) %> Nazad</a></p>
+</div>
+<%- include('../partials/foot') %>

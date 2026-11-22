@@ -1,0 +1,72 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; %>
+<div class="page-header">
+  <div class="crumbs"><a href="/ucenici?grupa=<%= cls.id %>"><%= cls.name %></a><%- h.icon('chevron-right', 14) %><span>Brza naplata</span></div>
+  <div class="ph-row">
+    <h1>Brza naplata — <%= cls.name %></h1>
+  </div>
+  <p class="ph-meta"><span><%= [cls.department_name, cls.program].filter(Boolean).join(' · ') %></span>
+    <span>Označite ko je donio novac i potvrdite jednom. Svako dijete dobija svoju priznanicu.</span></p>
+</div>
+
+<div class="period-bar no-print">
+  <div class="stepper">
+    <a href="?mjesec=<%= prev %>" aria-label="Prethodni mjesec"><%- h.icon('chevron-left') %></a>
+    <span><%= h.periodLabel(period).replace(/\.$/, '') %></span>
+    <% if (next) { %><a href="?mjesec=<%= next %>" aria-label="Sljedeći mjesec"><%- h.icon('chevron-right') %></a><% } else { %><a aria-disabled="true" style="opacity:.3"><%- h.icon('chevron-right') %></a><% } %>
+  </div>
+  <span class="small muted"><%= paid.length %> od <%= students.length %> već platilo</span>
+</div>
+
+<form method="post" action="/uplate/grupa/<%= cls.id %>" data-pay-form style="margin-top:12px">
+  <input type="hidden" name="period" value="<%= period %>">
+  <div class="pay-layout">
+    <div class="panel">
+      <div class="panel-head"><h2>Nisu platili <span class="count"><%= toPay.length %></span></h2>
+        <% if (toPay.length) { %><button type="button" class="link-btn" data-check-all>Označi sve</button><% } %></div>
+      <% if (!toPay.length) { %>
+        <div class="empty"><strong>Svi su platili</strong>Za <%= h.periodLabel(period).replace(/\.$/, '').toLowerCase() %> nema otvorenih članarina u ovoj grupi.</div>
+      <% } else { %>
+      <div class="table-wrap"><table class="pay-table">
+        <tbody>
+        <% for (const s of toPay) { %>
+          <tr data-pay-row>
+            <td class="w-1"><input type="checkbox" name="students" value="<%= s.id %>" id="s-<%= s.id %>"></td>
+            <td><label for="s-<%= s.id %>" style="margin:0;font-weight:500;cursor:pointer"><%= s.last_name %> <%= s.first_name %></label>
+              <span class="sub"><%= s.month.paid > 0 ? 'već uplaćeno ' + h.amount(s.month.paid) + ' · ' : '' %><%= s.parent_name %></span></td>
+            <td class="num"><input type="text" name="amount_<%= s.id %>" value="<%= h.amount(s.month.remaining) %>" inputmode="decimal" aria-label="Iznos"></td>
+          </tr>
+        <% } %>
+        </tbody>
+      </table></div>
+      <% } %>
+    </div>
+
+    <div class="panel pay-summary">
+      <div class="panel-head"><h2>Potvrda</h2></div>
+      <div class="panel-body">
+        <div class="pay-fields">
+          <div class="field"><label for="paid_on">Datum</label><input type="date" id="paid_on" name="paid_on" value="<%= today %>" required></div>
+          <div class="field"><label for="method">Način plaćanja</label>
+            <select id="method" name="method"><% for (const [k, v] of Object.entries(h.METHODS)) { %><option value="<%= k %>"><%= v %></option><% } %></select></div>
+        </div>
+        <div class="total-row hide-sm" style="margin-top:16px"><span class="muted" data-pay-count></span><span><strong data-pay-total>0,00</strong> <span class="muted"><%= cur %></span></span></div>
+      </div>
+      <div class="form-foot hide-sm"><button class="btn btn-primary btn-block" type="submit" data-pay-submit>Evidentiraj označene</button></div>
+    </div>
+  </div>
+  <div class="pay-bar">
+    <div><span class="muted small" data-pay-count data-unit="učenik"></span><strong><span data-pay-total>0,00</span> <%= cur %></strong></div>
+    <button class="btn btn-primary" type="submit" data-pay-submit>Evidentiraj</button>
+  </div>
+</form>
+
+<% if (paid.length) { %>
+<div class="panel" style="margin-top:16px">
+  <div class="panel-head"><h2>Već platili <span class="count"><%= paid.length %></span></h2></div>
+  <div class="table-wrap"><table class="list-table"><tbody>
+    <% for (const s of paid) { %><tr><td class="strong"><a href="/ucenici/<%= s.id %>"><%= s.last_name %> <%= s.first_name %></a></td><td class="num t-green"><%= h.money(s.month.paid, cur) %></td></tr><% } %>
+  </tbody></table></div>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

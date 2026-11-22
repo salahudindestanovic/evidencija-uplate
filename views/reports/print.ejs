@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title><%= doc.title %> — <%= settings.school_name %></title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  @page { size: A4; margin: 18mm 18mm 16mm; }
+  body { background: #e9ebef; }
+  .sheet {
+    background: #fff; max-width: 210mm; margin: 24px auto; padding: 20mm 20mm 18mm; box-shadow: 0 2px 12px rgba(0,0,0,.08);
+    color: #111; font: 11.5pt/1.55 Calibri, Carlito, "Segoe UI", Arial, sans-serif;
+  }
+  .doc-head { text-align: center; margin-bottom: 22px; }
+  .doc-head img { height: 72px; display: block; margin: 0 auto 8px; }
+  .doc-school { font-size: 15pt; font-weight: 700; letter-spacing: .02em; }
+  .doc-title { font-size: 13pt; margin-top: 4px; }
+  .doc-sub { color: #555; margin-top: 2px; }
+  .sheet h2 { font-size: 13pt; font-weight: 700; margin: 22px 0 8px; }
+  .sheet p { margin: 0 0 8px; text-align: justify; }
+  .sheet .note { font-size: 9.5pt; color: #666; font-style: italic; margin-top: 6px; }
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #bbb; margin: 14px 0 6px; }
+  .summary div { padding: 7px 10px; border-left: 1px solid #bbb; }
+  .summary div:first-child { border-left: 0; }
+  .summary span { display: block; font-size: 9.5pt; color: #555; }
+  .summary strong { font-size: 12.5pt; }
+  .summary em { font-style: normal; color: #555; font-size: 10pt; }
+  .dash { list-style: none; margin: 0 0 8px; padding-left: 18px; }
+  .dash li { position: relative; margin-bottom: 2px; }
+  .dash li::before { content: "-"; position: absolute; left: -14px; }
+  .group-title { margin: 12px 0 4px; font-weight: 700; }
+  .group-title::before { content: "•"; margin-right: 8px; }
+  .group-total { font-weight: 700; margin: 4px 0 12px 18px; }
+  .group .dash { padding-left: 36px; }
+  .group .dash li::before { left: -14px; }
+  .sheet table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 10pt; }
+  .sheet th, .sheet td { border: 1px solid #bbb; padding: 4px 7px; background: none; white-space: normal; color: #111; }
+  .sheet th { background: #f2f2f2 !important; font-weight: 700; font-size: 10pt; text-align: left; }
+  .sheet .r { text-align: right; white-space: nowrap; }
+  .sheet tfoot td { font-weight: 700; background: #f2f2f2; }
+  .sheet tr { break-inside: avoid; }
+  .closing { display: flex; justify-content: space-between; gap: 24px; margin-top: 44px; flex-wrap: wrap; }
+  .print-bar { position: sticky; top: 0; z-index: 5; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; padding: 12px; background: #fff; border-bottom: 1px solid var(--border); }
+  @media print {
+    body { background: #fff; }
+    .sheet { margin: 0; padding: 0; box-shadow: none; max-width: none; }
+    .print-bar { display: none; }
+  }
+  @media (max-width: 640px) {
+    .sheet { padding: 18px; margin: 0; overflow: hidden; font-size: 11pt; }
+    .summary { grid-template-columns: 1fr 1fr; }
+    .summary div:nth-child(3) { border-left: 0; }
+    .summary div:nth-child(n+3) { border-top: 1px solid #bbb; }
+    .sheet table { display: block; overflow-x: auto; }
+    .print-bar .btn { flex: 1; }
+  }
+</style>
+</head>
+<body>
+<% const bold = (s) => h.escape(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'); %>
+<div class="print-bar">
+  <button class="btn btn-primary" onclick="window.print()"><%- h.icon('printer') %>Štampaj / PDF</button>
+  <a class="btn" href="<%= wordUrl %>"><%- h.icon('file-text') %>Preuzmi Word</a>
+  <a class="btn" href="<%= backUrl %>"><%- h.icon('arrow-left') %>Nazad</a>
+</div>
+
+<div class="sheet">
+  <div class="doc-head">
+    <img src="/brand/logo-600.png" alt="">
+    <div class="doc-school"><%= doc.school %></div>
+    <div class="doc-title"><%= doc.title %></div>
+    <% if (doc.subtitle) { %><div class="doc-sub"><%= doc.subtitle %></div><% } %>
+  </div>
+
+  <% for (const b of doc.blocks) { %>
+    <% if (b.type === 'h') { %>
+      <h2><%= b.text %></h2>
+    <% } else if (b.type === 'p') { %>
+      <p><%- bold(b.text) %></p>
+    <% } else if (b.type === 'note') { %>
+      <p class="note"><%= b.text %></p>
+    <% } else if (b.type === 'summary') { %>
+      <div class="summary"><% for (const i of b.items) { %><div><span><%= i.label %></span><strong><%= i.value %></strong><% if (i.note) { %> <em><%= i.note %></em><% } %></div><% } %></div>
+    <% } else if (b.type === 'list') { %>
+      <ul class="dash"><% for (const i of b.items) { %><li><%- bold(i) %></li><% } %></ul>
+    <% } else if (b.type === 'group') { %>
+      <div class="group">
+        <div class="group-title"><%= b.title %></div>
+        <ul class="dash"><% for (const i of b.items) { %><li><%= i %></li><% } %></ul>
+        <div class="group-total"><%= b.total %></div>
+      </div>
+    <% } else if (b.type === 'table') { %>
+      <table>
+        <thead><tr><% b.head.forEach((x, i) => { %><th class="<%= b.align[i] %>"><%= x %></th><% }) %></tr></thead>
+        <tbody><% for (const r of b.rows) { %><tr><% r.forEach((x, i) => { %><td class="<%= b.align[i] %>"><%= x %></td><% }) %></tr><% } %></tbody>
+        <tfoot><tr><% b.foot.forEach((x, i) => { %><td class="<%= b.align[i] %>"><%= x %></td><% }) %></tr></tfoot>
+      </table>
+    <% } %>
+  <% } %>
+
+  <div class="closing">
+    <span>U <%= doc.place %>: <%= doc.date %> god.</span>
+    <span>Izvještaj uradio<%= doc.signer.includes(':') ? ' ' : ': ' %><%= doc.signer %></span>
+  </div>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<%- include('../partials/head') %>
+<% const isAdmin = isManager; %>
+<div class="page-header">
+  <div class="ph-row">
+    <h1>Grupe</h1>
+    <div class="ph-actions">
+      <% if (isAdmin || canEditStudents) { %><a class="btn btn-primary" href="/grupe/nova"><%- h.icon('plus') %>Nova grupa</a><% } %>
+    </div>
+  </div>
+</div>
+
+<nav class="tabs">
+  <a href="/grupe" class="<%= showArchived ? '' : 'active' %>">Aktivne</a>
+  <a href="/grupe?arhiva=1" class="<%= showArchived ? 'active' : '' %>">Arhivirane</a>
+</nav>
+
+<div class="panel">
+  <% if (!classes.length) { %>
+    <div class="empty">
+      <strong><%= showArchived ? 'Nema arhiviranih grupa' : 'Nema grupa' %></strong>
+      <% if (isAdmin && !showArchived) { %>Grupa određuje program, profesora i mjesečnu cijenu.
+        <div><a class="btn btn-primary" href="/grupe/nova"><%- h.icon('plus') %>Nova grupa</a></div><% } %>
+    </div>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Grupa</th><% if (showDept) { %><th>Odjeljenje</th><% } %><th>Program</th><th>Profesor</th><th class="num">Učenika</th><th class="num">Članarina (<%= settings.currency %>)</th><% if (isAdmin || canEditStudents) { %><th class="w-1"></th><% } %></tr></thead>
+    <tbody>
+    <% for (const c of classes) { %>
+      <tr class="row-link" data-href="/ucenici<%= h.qs({ grupa: c.id }) %>">
+        <td class="strong"><a href="/ucenici<%= h.qs({ grupa: c.id }) %>"><%= c.name %></a></td>
+        <% if (showDept) { %><td><%= placeOf(c) %></td><% } %>
+        <td><%= c.program || '—' %></td>
+        <td><%= c.teacher_name || '—' %></td>
+        <td class="num"><%= c.student_count %></td>
+        <td class="num"><%= h.amount(c.monthly_fee) %></td>
+        <% if (isAdmin) { %><td class="w-1 nowrap"><a class="btn btn-sm" href="/grupe/<%= c.id %>/cijene"><%- h.icon('badge-euro', 14) %>Cijene</a> <a class="btn btn-sm" href="/grupe/<%= c.id %>/uredi"><%- h.icon('pencil', 14) %>Uredi</a></td><% } else if (canEditStudents) { %><td class="w-1"><a class="btn btn-sm" href="/grupe/<%= c.id %>/uredi"><%- h.icon('pencil', 14) %>Uredi</a></td><% } %>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

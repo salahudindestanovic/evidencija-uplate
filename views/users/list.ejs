@@ -1,0 +1,32 @@
+<%- include('../partials/head') %>
+<% const isMain = user.role === 'admin'; %>
+<div class="page-header">
+  <div class="ph-row">
+    <h1><%= isMain ? 'Korisnici' : 'Osoblje' %></h1>
+    <div class="ph-actions"><a class="btn btn-primary" href="/korisnici/novi"><%- h.icon('plus') %>Novi korisnik</a></div>
+  </div>
+  <p class="ph-meta"><%= isMain
+    ? 'Koordinator vodi grad ili jedno odjeljenje. Blagajnik evidentira uplate i vidi izvještaje. Profesor vidi samo svoje grupe.'
+    : 'Profesori i blagajnici za ' + placeLabel + '.' %></p>
+</div>
+<div class="panel">
+  <% if (!users.length) { %><div class="empty">Nema korisnika.</div><% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Korisnik</th><th>Korisničko ime</th><th>Uloga</th><th>Mjesto</th><th>Grupe</th><th>Status</th><th class="w-1"></th></tr></thead>
+    <tbody>
+    <% for (const u of users) { %>
+      <tr>
+        <td class="strong"><span style="display:flex;align-items:center;gap:10px"><span class="avatar"><%= h.initials(u.name) %></span><span><%= u.name %><%= u.id === user.id ? ' (vi)' : '' %></span></span></td>
+        <td class="muted"><%= u.username %></td>
+        <td><%= ROLES[u.role] %></td>
+        <td><%= u.role === 'admin' ? 'Svi gradovi' : [u.branch_name, u.department_name || 'cijeli grad'].filter(Boolean).join(' · ') %></td>
+        <td class="small" style="max-width:260px;white-space:normal"><%= u.class_names || '—' %></td>
+        <td><span class="st <%= u.active ? 'st-paid' : 'st-none' %>"><%= u.active ? 'Aktivan' : 'Neaktivan' %></span></td>
+        <td class="w-1"><% if (u.editable) { %><a class="btn btn-sm" href="/korisnici/<%= u.id %>/uredi"><%- h.icon('pencil', 14) %>Uredi</a><% } %></td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+<%- include('../partials/foot') %>

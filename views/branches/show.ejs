@@ -1,0 +1,60 @@
+<%- include('../partials/head') %>
+<% const cur = settings.currency; const activeDeps = departments.filter((d) => d.active); const archivedDeps = departments.filter((d) => !d.active); %>
+<div class="page-header">
+  <div class="crumbs"><a href="/gradovi">Gradovi</a><%- h.icon('chevron-right', 14) %><span><%= city.name %></span></div>
+  <div class="ph-row">
+    <h1><%= city.name %><% if (!city.active) { %> <span class="tag">Arhiviran</span><% } %></h1>
+    <div class="ph-actions">
+      <a class="btn" href="/gradovi/<%= city.id %>/uredi"><%- h.icon('pencil') %>Uredi grad</a>
+      <form method="post" action="/odabir" style="display:inline">
+        <input type="hidden" name="place" value="b<%= city.id %>"><input type="hidden" name="back" value="/">
+        <button class="btn"><%- h.icon('layout-dashboard') %>Pregled grada</button>
+      </form>
+      <a class="btn btn-primary" href="/gradovi/<%= city.id %>/odjeljenja/novo"><%- h.icon('plus') %>Novo odjeljenje</a>
+    </div>
+  </div>
+  <p class="ph-meta">
+    <span>Koordinator grada: <%= cityCoordinators.length ? cityCoordinators.map((c) => c.name).join(', ') : '—' %></span>
+    <a href="/korisnici/novi?grad=<%= city.id %>&uloga=branch_admin">Dodaj koordinatora</a>
+  </p>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Odjeljenja <span class="count"><%= activeDeps.length %></span></h2></div>
+  <% if (!activeDeps.length) { %>
+    <div class="empty"><strong>Nema odjeljenja</strong><div><a class="btn btn-primary" href="/gradovi/<%= city.id %>/odjeljenja/novo"><%- h.icon('plus') %>Novo odjeljenje</a></div></div>
+  <% } else { %>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Odjeljenje</th><th>Koordinator odjeljenja</th><th class="num">Grupe</th><th class="num">Učenici</th><th class="num">Naplaćeno / zaduženo (<%= cur %>)</th><th class="num">Ukupan dug (<%= cur %>)</th><th class="w-1"></th></tr></thead>
+    <tbody>
+    <% for (const d of activeDeps) { %>
+      <tr>
+        <td class="strong">
+          <form method="post" action="/odabir" style="display:inline">
+            <input type="hidden" name="place" value="d<%= d.id %>"><input type="hidden" name="back" value="/">
+            <button class="link-btn row-title"><%= d.name %></button>
+          </form>
+          <% if (d.address) { %><span class="sub"><%= d.address %></span><% } %>
+        </td>
+        <td><%= d.coordinators || '—' %></td>
+        <td class="num"><%= d.class_count %></td>
+        <td class="num"><%= d.student_count %></td>
+        <td class="num nowrap"><%= h.amount(d.month.paid) %> / <%= h.amount(d.month.due) %><span class="meter meter-inline"><i style="width: <%= h.pct(d.month.paid, d.month.due) %>%"></i></span></td>
+        <td class="num <%= d.total_debt > 0 ? 't-red' : 'muted' %>"><%= h.amount(d.total_debt) %></td>
+        <td class="w-1"><a class="btn btn-sm" href="/gradovi/odjeljenja/<%= d.id %>/uredi"><%- h.icon('pencil', 14) %>Uredi</a></td>
+      </tr>
+    <% } %>
+    </tbody>
+  </table></div>
+  <% } %>
+</div>
+
+<% if (archivedDeps.length) { %>
+<div class="panel">
+  <div class="panel-head"><h2>Arhivirana odjeljenja</h2></div>
+  <div class="table-wrap"><table><tbody>
+    <% for (const d of archivedDeps) { %><tr><td class="strong"><%= d.name %></td><td class="w-1"><a class="btn btn-sm" href="/gradovi/odjeljenja/<%= d.id %>/uredi">Uredi</a></td></tr><% } %>
+  </tbody></table></div>
+</div>
+<% } %>
+<%- include('../partials/foot') %>

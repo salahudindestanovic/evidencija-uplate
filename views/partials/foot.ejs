@@ -1,0 +1,22 @@
+<% if (user) { %>
+    </main>
+  </div>
+</div>
+<%# Donji meni na telefonu %>
+<nav class="tabbar" aria-label="Glavni meni">
+  <% const tab = (href, label, icon) => { const active = href === '/' ? currentPath === '/' : currentPath.startsWith(href) && !(href === '/uplate' && currentPath.startsWith('/uplate/nova'));
+       return `<a href="${href}" class="${active ? 'active' : ''}">${h.icon(icon, 22)}<span>${label}</span></a>`; } %>
+  <%- tab('/', 'Pregled', 'house') %>
+  <%- tab('/ucenici', 'Učenici', 'users') %>
+  <% if (canRecordHere) { %>
+    <a href="/uplate/nova" class="tab-primary <%= currentPath.startsWith('/uplate/nova') ? 'active' : '' %>"><span class="tab-plus"><%- h.icon('plus', 24) %></span><span>Uplata</span></a>
+  <% } %>
+  <%- tab('/uplate', 'Uplate', 'wallet') %>
+  <button type="button" data-nav-toggle><%- h.icon('menu', 22) %><span>Više</span></button>
+</nav>
+<% } else { %>
+</main>
+<% } %>
+<script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<%- include('../partials/head') %>
+<% const isNew = !u.id; const isMain = user.role === 'admin'; %>
+<div class="page-header">
+  <div class="crumbs"><a href="/korisnici"><%= isMain ? 'Korisnici' : 'Osoblje' %></a><%- h.icon('chevron-right', 14) %><span><%= isNew ? 'Novi' : u.name %></span></div>
+  <div class="ph-row"><h1><%= title %></h1></div>
+</div>
+
+<% if (error) { %><div class="notice notice-error form-panel"><%- h.icon('circle-alert') %><span><%= error %></span></div><% } %>
+
+<div class="panel form-panel">
+  <form method="post" action="<%= isNew ? '/korisnici' : '/korisnici/' + u.id %>" autocomplete="off">
+    <div class="form-section">
+      <header><h3>Podaci</h3><p>Ime se prikazuje uz grupe i uz uplate koje korisnik evidentira.</p></header>
+      <div class="fields">
+        <div class="full"><label for="name">Ime i prezime</label><input type="text" id="name" name="name" value="<%= u.name || '' %>" required <%= isNew ? 'autofocus' : '' %>></div>
+        <% if (Object.keys(roles).length > 1) { %>
+        <div><label for="role">Uloga</label>
+          <select id="role" name="role"><% for (const [k, v] of Object.entries(roles)) { %><option value="<%= k %>" <%= u.role === k ? 'selected' : '' %>><%= v %></option><% } %></select>
+          <span class="hint">Koordinator može i predavati u grupi.</span></div>
+        <% } else { %>
+          <input type="hidden" name="role" value="<%= Object.keys(roles)[0] %>">
+        <% } %>
+        <% const placeVal = u.department_id ? 'd' + u.department_id : (u.branch_id ? 'b' + u.branch_id : '');
+           const cityIds = [...new Set(departmentOptions.map((d) => d.branch_id))]; %>
+        <div><label for="place">Grad / odjeljenje</label>
+          <select id="place" name="place">
+            <% if (isMain) { %><option value="">— bez grada (glavni administrator)</option><% } %>
+            <% for (const cid of cityIds) { const deps = departmentOptions.filter((d) => d.branch_id === cid); %>
+              <optgroup label="<%= deps[0].branch_name %>">
+                <% if (isMain || !user.department_id) { %><option value="b<%= cid %>" <%= placeVal === 'b' + cid ? 'selected' : '' %>><%= deps[0].branch_name %> — cijeli grad</option><% } %>
+                <% for (const d of deps) { %><option value="d<%= d.id %>" <%= placeVal === 'd' + d.id ? 'selected' : '' %>><%= d.name %></option><% } %>
+              </optgroup>
+            <% } %>
+          </select>
+          <span class="hint">Koordinator vezan za grad vidi sva odjeljenja u gradu. Glavni administrator vidi sve; grad uz njega znači da je ujedno koordinator tog grada.</span></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <header><h3>Pristup</h3><p><%= isNew ? 'Podatke za prijavu proslijedite korisniku.' : 'Lozinku mijenjajte samo na zahtjev korisnika.' %></p></header>
+      <div class="fields">
+        <div><label for="username">Korisničko ime</label><input type="text" id="username" name="username" value="<%= u.username || '' %>" autocapitalize="none" required>
+          <span class="hint">Bez razmaka i kvačica, npr. amir.h</span></div>
+        <div><label for="password"><%= isNew ? 'Lozinka' : 'Nova lozinka' %></label>
+          <input type="password" id="password" name="password" autocomplete="new-password" <%= isNew ? 'required minlength=8' : '' %>>
+          <span class="hint"><%= isNew ? 'Najmanje 8 znakova.' : 'Ostavite prazno da se lozinka ne mijenja.' %></span></div>
+      </div>
+    </div>
+    <% if (!isNew) { %>
+    <div class="form-section">
+      <header><h3>Status</h3><p>Uplate deaktiviranog korisnika ostaju sačuvane.</p></header>
+      <div><label class="check"><input type="checkbox" name="active" value="0" <%= u.active ? '' : 'checked' %>>
+        <span><strong>Deaktiviraj račun</strong><span class="hint" style="margin-top:2px">Korisnik se više ne može prijaviti.</span></span></label></div>
+    </div>
+    <% } %>
+    <div class="form-foot"><a class="btn" href="/korisnici">Odustani</a><button class="btn btn-primary">Sačuvaj</button></div>
+  </form>
+</div>
+<%- include('../partials/foot') %>

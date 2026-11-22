@@ -1,0 +1,14 @@
+<%- include('../partials/head') %>
+<div class="page-header">
+  <div class="crumbs"><a href="/uplate">Uplate</a><%- h.icon('chevron-right', 14) %><span>Nova uplata</span></div>
+  <div class="ph-row"><h1>Nova uplata</h1></div>
+  <p class="ph-meta">Pronađite učenika za kojeg se evidentira uplata.</p>
+</div>
+
+<div class="panel form-panel">
+  <form class="toolbar" method="get" action="/uplate/nova" data-live-search="#pick">
+    <div class="grow input-icon"><%- h.icon('search') %><input type="search" name="q" value="<%= q %>" placeholder="Ime, prezime ili roditelj" autofocus autocomplete="off" aria-label="Pretraga učenika"></div>
+  </form>
+  <div class="pick-list" id="pick"><%- include('pick-list') %></div>
+</div>
+<%- include('../partials/foot') %>
