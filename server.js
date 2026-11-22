@@ -23,6 +23,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Provjera da server radi (za hosting); ne otkriva ništa i ne traži šifru.
+app.get('/zdravlje', (req, res) => res.type('text').send('ok'));
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/fonts', express.static(path.join(__dirname, 'node_modules', '@fontsource', 'ibm-plex-sans', 'files'), { maxAge: '30d' }));
 // Veća granica zbog uvoza učenika iz Excela (nekoliko hiljada redova).
